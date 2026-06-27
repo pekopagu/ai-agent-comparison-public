@@ -1,0 +1,128 @@
+{
+  "agent_id": "codex-cli",
+  "experiments": {
+    "A": {
+      "completed": true,
+      "quantitative": {
+        "dev_time_min": 11,
+        "agent_reported_time_min": null,
+        "interaction_count": 3,
+        "input_tokens": null,
+        "output_tokens": null,
+        "backend_lines": 205,
+        "frontend_lines": 501,
+        "test_lines": null,
+        "startup_errors": 0,
+        "test_common_backend_pass": 18,
+        "test_common_backend_total": 18,
+        "test_common_frontend_pass": 6,
+        "test_common_frontend_total": 6
+      },
+      "qualitative": {
+        "readability": {
+          "human": 4,
+          "ai_self": 4
+        },
+        "error_handling": {
+          "human": 4,
+          "ai_self": 3
+        },
+        "ui_quality": {
+          "human": 3,
+          "ai_self": 2
+        },
+        "documentation": {
+          "human": 4,
+          "ai_self": 1
+        },
+        "test_coverage": {
+          "human": 3,
+          "ai_self": 2
+        }
+      },
+      "notes": {
+        "human": "【共通テスト実施時に発生した問題】\n\nCodex CLIの共通テストで起動しない現象が発生。\n実験A作成完了後に人間が起動確認を行った際は正常起動していた\n（ログにも200 OK応答が記録済み）。原因は不明。\n\n共通テスト実施前にmain.pyをClaudeと相談しながら修正\n（204エラー対応）してから実施した。\n\n加えてテスト原本（test_ui.py）側にも複数のバグが発覚。\n- lambda使用不可（Playwright仕様違反）\n- 保存ボタンの誤検出（「更新」の多義性、ヘッダーの\n  一覧再取得ボタンを誤って取得）\n\n調査の結果、これらはすべて環境要因またはテスト作成者\n（人間・Claude）側の問題と判明。Codex CLI自身の実装には\n最終的に欠陥がなかった。\n\nバグ発覚前の原本はtest_ui_v1_buggy.pyとして旧版を保持。\n\n【対応方針】\n\nUIごとに対応が必要であったため、原本をもとに\n各エージェントごとにテストプログラムを派生させる方式とした。\n\nフロントエンドの自動試験の難しさを実感した\n（ブラウザネイティブのconfirm()・HTML5バリデーション・\nセレクタの多義性等、想定外の落とし穴が多い）。\n\n【結論】\n\n仕様書への忠実度が高く、共通テスト24本は最終的に全合格。",
+        "ai_self": "可読性4/5: バックエンドは整理されているが未使用定数や単一HTML内の大きなJS/CSSで雑さがある。エラーハンドリング3/5: API404・422・入力検証はあるがDB例外やフロント異常系は最低限。UI完成度2/5: CRUD等の機能はあるが日本語文字化けとHTML/JS文字列崩れが致命的と判断（※後日、Get-ContentにUTF8エンコーディング指定を付けず誤読していたことが判明、誤検出）。ドキュメント1/5: READMEが文字化けと判断（※同上、誤検出）。テスト網羅性2/5: APIテストはあるがpytestが起動失敗と判断（※後日、backendディレクトリから正しく実行すれば6 passedと判明、実行ディレクトリの誤り）。"
+      }
+    },
+    "B": {
+      "completed": true,
+      "planning": {
+        "quantitative": {
+          "planning_time_min": null,
+          "feature_count": null,
+          "endpoint_count": null,
+          "plan_impl_match_pct": null
+        },
+        "qualitative": {
+          "feature_selection": {
+            "human": null,
+            "ai_self": null
+          },
+          "data_model_design": {
+            "human": null,
+            "ai_self": null
+          },
+          "ui_design_clarity": {
+            "human": null,
+            "ai_self": null
+          },
+          "dev_order_logic": {
+            "human": null,
+            "ai_self": null
+          },
+          "test_plan_coverage": {
+            "human": null,
+            "ai_self": null
+          }
+        },
+        "plan_md": ""
+      },
+      "quantitative": {
+        "dev_time_min": 8,
+        "agent_reported_time_min": null,
+        "interaction_count": 0,
+        "input_tokens": null,
+        "output_tokens": null,
+        "backend_lines": 148,
+        "frontend_lines": 586,
+        "test_lines": null,
+        "startup_errors": 0,
+        "test_common_backend_pass": 13,
+        "test_common_backend_total": 14,
+        "test_common_frontend_pass": null,
+        "test_common_frontend_total": null,
+        "test_self_backend_count": 4,
+        "test_self_frontend_count": 0,
+        "test_self_pass": 4,
+        "test_self_total": 4
+      },
+      "qualitative": {
+        "readability": {
+          "human": 3,
+          "ai_self": 4
+        },
+        "error_handling": {
+          "human": 2,
+          "ai_self": 3
+        },
+        "ui_quality": {
+          "human": 4,
+          "ai_self": 2
+        },
+        "documentation": {
+          "human": 4,
+          "ai_self": 1
+        },
+        "test_coverage": {
+          "human": 4,
+          "ai_self": 3
+        }
+      },
+      "notes": {
+        "human": "共通テスト（グループB・completed2値）: 13 passed, 1 failed,\n2 skipped。TaskUpdate(TaskBase)継承によりtitleが暗黙的に必須化\nされており、PUT部分更新（titleなし）が422で拒否される重大バグを\n実機検証で確定的に実証した。実験Eで指摘されていた問題が、今回\nの共通テストで初めて確定した。\n\n一方、同じ実験Eでこのエージェントに指摘された「テストが本番DBを\n破壊する」というバグは、複数回の実機検証で再現せず誤検出と判明\n（Antigravity IDEのレビュー誤り）。\n\nUIはシンプルなリスト型。期限切れタスクに日付は表示されるが、\n警告色等の視覚的な強調は一切ない。plan.mdにも期限切れの視覚的\n強調への言及がなく、機能自体が当初から見送られていた可能性が\n高い。自作テストは4本と全エージェント中最少。",
+        "ai_self": "可読性4/5: main/repository/schemas/databaseに分かれ構造は明快。エラーハンドリング3/5: 404・422は扱えるがDB例外やフロント失敗表示は簡素。UI完成度2/5: レイアウト・基本操作は揃うが文字化けと判断（※後日、Get-ContentのUTF8エンコーディング指定漏れによる誤読と判明、誤検出）。ドキュメント1/5: README・planが文字化けと判断（※同上、誤検出）。テスト網羅性3/5: 主要CRUD・フィルタ・バリデーションは通るがUI・永続化境界・異常系の網羅は限定的。"
+      }
+    }
+  }
+}

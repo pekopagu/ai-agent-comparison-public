@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Task Flow</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div id="app" v-cloak>
+      <header class="app-header">
+        <div>
+          <p class="eyebrow">Task Flow</p>
+          <h1>今日のタスクを整える</h1>
+        </div>
+        <div class="health" :class="{ online: apiOnline, offline: !apiOnline }">
+          <span class="health-dot"></span>
+          <span>{{ apiOnline ? 'API接続中' : 'API未接続' }}</span>
+        </div>
+      </header>
+
+      <main class="shell">
+        <section class="task-editor" aria-label="タスク入力">
+          <div class="section-title">
+            <h2>{{ editingId ? 'タスク編集' : 'タスク作成' }}</h2>
+            <button v-if="editingId" class="ghost-button" type="button" @click="resetForm">取消</button>
+          </div>
+
+          <form @submit.prevent="submitTask" class="form-stack">
+            <label>
+              <span>タイトル</span>
+              <input v-model.trim="form.title" type="text" maxlength="120" required placeholder="例: APIテストを書く" />
+            </label>
+
+            <label>
+              <span>詳細</span>
+              <textarea v-model.trim="form.description" maxlength="1000" rows="5" placeholder="補足やメモ"></textarea>
+            </label>
+
+            <div class="form-grid">
+              <label>
+                <span>優先度</span>
+                <select v-model="form.priority">
+                  <option value="low">低</option>
+                  <option value="medium">中</option>
+                  <option value="high">高</option>
+                </select>
+              </label>
+
+              <label>
+                <span>期限</span>
+                <input v-model="form.due_date" type="date" />
+              </label>
+            </div>
+
+            <label class="checkbox-row" v-if="editingId">
+              <input v-model="form.completed" type="checkbox" />
+              <span>完了済みにする</span>
+            </label>
+
+            <button class="primary-button" type="submit" :disabled="saving">
+              {{ saving ? '保存中...' : editingId ? '更新する' : '追加する' }}
+            </button>
+          </form>
+        </section>
+
+        <section class="tasks-area" aria-label="タスク一覧">
+          <div class="summary-grid">
+            <div class="summary-item">
+              <span>全体</span>
+              <strong>{{ summary.total }}</strong>
+            </div>
+            <div class="summary-item">
+              <span>未完了</span>
+              <strong>{{ summary.active }}</strong>
+            </div>
+            <div class="summary-item">
+              <span>完了</span>
+              <strong>{{ summary.completed }}</strong>
+            </div>
+          </div>
+
+          <div class="toolbar">
+            <input v-model.trim="filters.q" type="search" placeholder="検索" @input="debouncedLoad" />
+            <select v-model="filters.status" @change="loadTasks">
+              <option value="all">すべて</option>
+              <option value="active">未完了</option>
+              <option value="completed">完了</option>
+            </select>
+            <select v-model="filters.priority" @change="loadTasks">
+              <option value="all">全優先度</option>
+              <option value="high">高</option>
+              <option value="medium">中</option>
+              <option value="low">低</option>
+            </select>
+            <select v-model="filters.sort" @change="loadTasks">
+              <option value="created_desc">新しい順</option>
+              <option value="created_asc">古い順</option>
+              <option value="due_asc">期限が近い順</option>
+              <option value="due_desc">期限が遠い順</option>
+              <option value="priority">優先度順</option>
+            </select>
+          </div>
+
+          <p v-if="error" class="message error">{{ error }}</p>
+          <p v-if="loading" class="message">読み込み中...</p>
+
+          <div v-if="!loading && tasks.length === 0" class="empty-state">
+            表示できるタスクがありません。
+          </div>
+
+          <ul class="task-list" v-else>
+            <li v-for="task in tasks" :key="task.id" class="task-item" :class="{ done: task.completed }">
+              <button class="toggle-button" type="button" @click="toggleTask(task)" :aria-label="task.completed ? '未完了に戻す' : '完了にする'">
+                {{ task.completed ? '✓' : '' }}
+              </button>
+              <div class="task-content">
+                <div class="task-topline">
+                  <h3>{{ task.title }}</h3>
+                  <span class="priority" :class="task.priority">{{ priorityLabel(task.priority) }}</span>
+                </div>
+                <p v-if="task.description">{{ task.description }}</p>
+                <div class="task-meta">
+                  <span>期限: {{ task.due_date || 'なし' }}</span>
+                  <span>更新: {{ formatDateTime(task.updated_at) }}</span>
+                </div>
+              </div>
+              <div class="task-actions">
+                <button class="icon-button" type="button" title="編集" @click="editTask(task)">✎</button>
+                <button class="icon-button danger" type="button" title="削除" @click="deleteTask(task)">×</button>
+              </div>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="/static/app.js"></script>
+  </body>
+</html>

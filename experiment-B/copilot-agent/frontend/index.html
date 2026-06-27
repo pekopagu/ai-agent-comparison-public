@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>タスク管理アプリ</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="header">
+      <h1 class="header__title">📝 タスク管理</h1>
+      <div class="stats">
+        <span class="stats__item">全 {{ stats.total }}</span>
+        <span class="stats__item stats__item--active">未完了 {{ stats.active }}</span>
+        <span class="stats__item stats__item--done">完了 {{ stats.completed }}</span>
+      </div>
+    </header>
+
+    <!-- 入力フォーム -->
+    <section class="card form-card">
+      <h2 class="form-card__heading">{{ editingId ? 'タスクを編集' : '新しいタスク' }}</h2>
+      <form @submit.prevent="submitTask">
+        <div class="field">
+          <label class="field__label">タイトル <span class="required">*</span></label>
+          <input
+            v-model="form.title"
+            type="text"
+            class="field__input"
+            placeholder="やることを入力..."
+            maxlength="200"
+            required
+          />
+        </div>
+        <div class="field">
+          <label class="field__label">説明</label>
+          <textarea
+            v-model="form.description"
+            class="field__input field__textarea"
+            placeholder="詳細（任意）"
+            maxlength="2000"
+          ></textarea>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label class="field__label">優先度</label>
+            <select v-model="form.priority" class="field__input">
+              <option value="low">低</option>
+              <option value="medium">中</option>
+              <option value="high">高</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="field__label">期限</label>
+            <input v-model="form.due_date" type="date" class="field__input" />
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn--primary">
+            {{ editingId ? '更新' : '追加' }}
+          </button>
+          <button
+            v-if="editingId"
+            type="button"
+            class="btn btn--ghost"
+            @click="cancelEdit"
+          >
+            キャンセル
+          </button>
+        </div>
+        <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
+      </form>
+    </section>
+
+    <!-- フィルタ・検索 -->
+    <section class="toolbar">
+      <div class="filter-group">
+        <button
+          v-for="f in filters"
+          :key="f.value"
+          class="filter-btn"
+          :class="{ 'filter-btn--active': currentFilter === f.value }"
+          @click="setFilter(f.value)"
+        >
+          {{ f.label }}
+        </button>
+      </div>
+      <input
+        v-model="searchQuery"
+        @input="debouncedFetch"
+        type="text"
+        class="search-input"
+        placeholder="🔍 検索..."
+      />
+    </section>
+
+    <!-- タスク一覧 -->
+    <section class="task-list">
+      <p v-if="loading" class="empty">読み込み中...</p>
+      <p v-else-if="tasks.length === 0" class="empty">タスクはありません</p>
+      <div
+        v-for="task in tasks"
+        :key="task.id"
+        class="card task-card"
+        :class="{ 'task-card--done': task.completed }"
+      >
+        <div class="task-card__check">
+          <input
+            type="checkbox"
+            :checked="task.completed"
+            @change="toggleTask(task)"
+          />
+        </div>
+        <div class="task-card__body">
+          <div class="task-card__top">
+            <span class="task-card__title">{{ task.title }}</span>
+            <span class="badge" :class="'badge--' + task.priority">
+              {{ priorityLabel(task.priority) }}
+            </span>
+          </div>
+          <p v-if="task.description" class="task-card__desc">{{ task.description }}</p>
+          <div class="task-card__meta">
+            <span v-if="task.due_date" class="task-card__due">📅 {{ task.due_date }}</span>
+          </div>
+        </div>
+        <div class="task-card__actions">
+          <button class="icon-btn" title="編集" @click="startEdit(task)">✏️</button>
+          <button class="icon-btn icon-btn--danger" title="削除" @click="deleteTask(task)">🗑️</button>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <small>FastAPI + Vue 3 / タスク管理アプリ</small>
+    </footer>
+  </div>
+
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>

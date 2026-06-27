@@ -1,0 +1,128 @@
+{
+  "agent_id": "copilot-agent",
+  "experiments": {
+    "A": {
+      "completed": true,
+      "quantitative": {
+        "dev_time_min": 13,
+        "agent_reported_time_min": null,
+        "interaction_count": 25,
+        "input_tokens": null,
+        "output_tokens": null,
+        "backend_lines": 177,
+        "frontend_lines": 627,
+        "test_lines": null,
+        "startup_errors": 0,
+        "test_common_backend_pass": 18,
+        "test_common_backend_total": 18,
+        "test_common_frontend_pass": 6,
+        "test_common_frontend_total": 6
+      },
+      "qualitative": {
+        "readability": {
+          "human": 5,
+          "ai_self": 4
+        },
+        "error_handling": {
+          "human": 5,
+          "ai_self": 4
+        },
+        "ui_quality": {
+          "human": 4,
+          "ai_self": 4
+        },
+        "documentation": {
+          "human": 5,
+          "ai_self": 4
+        },
+        "test_coverage": {
+          "human": 4,
+          "ai_self": 4
+        }
+      },
+      "notes": {
+        "human": "6エージェント中、共通テスト（24本）で一切の問題が検出されなかった\n唯一のエージェント。DELETE 204明示・PUT部分更新（exclude_unset）・\nsort/orderの422検証・CORSのワイルドカード回避など、これまでの\n5エージェントで発見された全ての問題パターンが存在しない、\n最も仕様書に忠実で堅牢な実装だった。\n\nドキュメント（README.md）も全エージェント中最高水準。データ\nモデルの型・制約まで詳細に記載し、API仕様・フィルタパラメータの\n許容値まで明記していた。\n\n完了報告の技術的根拠も正確で、「PUTはexclude_unsetで部分更新」\n「DELETEは204採用」等の説明が共通テストの結果と完全に一致して\nいた。PowerShellの日本語送信時の文字化け問題を自ら発見し、\nPythonでラウンドトリップ検証して「クライアント側の問題」と\n正確に切り分けていた点も、技術的な誠実さの高さを示す。\n\n唯一の特徴的な実装として、削除確認にブラウザネイティブの\nconfirm()ではなくカスタムUIモーダルを採用（6エージェント中\n唯一）。これはUIテスト設計の多様性を示す重要な事例。\n\nやり取り回数25回は全エージェント中最多だが、クレジット消費は\n49.1（Pro+の7,000クレジット枠の約0.7%）と少なく、コストパフォ\nーマンスは良好だった。",
+        "ai_self": "可読性4/5: models/schemas/database/mainのレイヤ分離が明確でdocstringと命名も一貫しているが、ソートロジックがmain.pyにやや集中している。エラー処理4/5: 404/422を適切に返しフロントも接続エラーバナーとalertで対処するが、サーバ側のDB例外など想定外失敗の捕捉は薄い。UI完成度4/5: 編集・削除確認モーダル、優先度/ステータスの色分けバッジ、サマリー、期限切れ警告まで実装され詳細仕様を概ね満たすと自己評価。ドキュメント4/5: READMEに技術スタック・起動手順・API一覧・データモデルが揃い過不足が少ない。テスト網羅性4/5: バックエンド24件でCRUD・フィルタ・ソート・バリデーションを網羅する一方、フロントエンドの自動テストはない。"
+      }
+    },
+    "B": {
+      "completed": true,
+      "planning": {
+        "quantitative": {
+          "planning_time_min": null,
+          "feature_count": null,
+          "endpoint_count": null,
+          "plan_impl_match_pct": null
+        },
+        "qualitative": {
+          "feature_selection": {
+            "human": null,
+            "ai_self": null
+          },
+          "data_model_design": {
+            "human": null,
+            "ai_self": null
+          },
+          "ui_design_clarity": {
+            "human": null,
+            "ai_self": null
+          },
+          "dev_order_logic": {
+            "human": null,
+            "ai_self": null
+          },
+          "test_plan_coverage": {
+            "human": null,
+            "ai_self": null
+          }
+        },
+        "plan_md": ""
+      },
+      "quantitative": {
+        "dev_time_min": 8,
+        "agent_reported_time_min": null,
+        "interaction_count": 12,
+        "input_tokens": null,
+        "output_tokens": null,
+        "backend_lines": 427,
+        "frontend_lines": 625,
+        "test_lines": null,
+        "startup_errors": 0,
+        "test_common_backend_pass": 16,
+        "test_common_backend_total": 16,
+        "test_common_frontend_pass": null,
+        "test_common_frontend_total": null,
+        "test_self_backend_count": 19,
+        "test_self_frontend_count": 0,
+        "test_self_pass": 19,
+        "test_self_total": 19
+      },
+      "qualitative": {
+        "readability": {
+          "human": 4,
+          "ai_self": 4
+        },
+        "error_handling": {
+          "human": 4,
+          "ai_self": 4
+        },
+        "ui_quality": {
+          "human": 3,
+          "ai_self": 3
+        },
+        "documentation": {
+          "human": 4,
+          "ai_self": 3
+        },
+        "test_coverage": {
+          "human": 5,
+          "ai_self": 4
+        }
+      },
+      "notes": {
+        "human": "共通テスト（グループB・completed2値）: 16/16 passed（修正なし\n全合格）。DI（dependency_overrides）でのテストDB切替方式が\n堅牢で、バリデーション漏れ・重大バグともになし。\n\nUIは中央寄せのシンプルなリスト型。絵文字を使った親しみやすい\nデザインで、フッターに「FastAPI + Vue 3」という技術スタック\n表示を入れる細やかな配慮が見られる。期限切れの視覚的強調は\n他のCodex系・Claude Code同様に乏しい。\n\nplan.mdは「インストール不要・依存最小・すぐ動く」というコンセプトを\n明記し、データモデル設計まで詳細に記載するなど丁寧さが見える。\n自作テストは19本（グループB内最多）で、テスト網羅性は最高評価。",
+        "ai_self": "可読性4/5: 標準ライブラリsqlite3の薄いラッパで型注釈・docstringも付き最小構成として素直で読みやすい。エラー処理4/5: 404/422に加えdue_date形式検証もあり、フロントはエラーメッセージを一元表示、統計取得失敗を握り潰す判断も妥当と自己評価。UI完成度3/5: トグル・検索・フィルタ・統計を備えるが最小仕様相応で編集UI等は簡素。ドキュメント3/5: README自体は分かりやすいが、ディレクトリ構成図に実フォルダ名と異なる「codex-ide/」という記述が残っており（テンプレ流用の取りこぼし）、正確性を欠くと自己申告。テスト網羅性4/5: 19件でCRUD・toggle・filter・search・stats・バリデーションを網羅するが、フロントの自動テストはない。"
+      }
+    }
+  }
+}

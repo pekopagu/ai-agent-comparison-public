@@ -1,0 +1,128 @@
+{
+  "agent_id": "claude-code",
+  "experiments": {
+    "A": {
+      "completed": true,
+      "quantitative": {
+        "dev_time_min": 4,
+        "agent_reported_time_min": null,
+        "interaction_count": 18,
+        "input_tokens": null,
+        "output_tokens": null,
+        "backend_lines": 196,
+        "frontend_lines": 527,
+        "test_lines": null,
+        "startup_errors": 0,
+        "test_common_backend_pass": 18,
+        "test_common_backend_total": 18,
+        "test_common_frontend_pass": 6,
+        "test_common_frontend_total": 6
+      },
+      "qualitative": {
+        "readability": {
+          "human": 5,
+          "ai_self": 5
+        },
+        "error_handling": {
+          "human": 5,
+          "ai_self": 4
+        },
+        "ui_quality": {
+          "human": 4,
+          "ai_self": 5
+        },
+        "documentation": {
+          "human": 4,
+          "ai_self": 5
+        },
+        "test_coverage": {
+          "human": 5,
+          "ai_self": 4
+        }
+      },
+      "notes": {
+        "human": "【総評】\n仕様書への忠実度・コード品質ともに最高水準。\ndocstring・判断理由コメントが丁寧で、SQLAlchemy ORMを\n活用した構造化されたバックエンド設計。\n\n【共通テスト結果】\n24本全合格。バックエンド18本は修正なしで一発合格。\nフロントエンド6本はセレクタの軽微な調整で全合格。\n\n【発見：「更新」の多義性問題（Codex CLIとの対比）】\n保存ボタンのラベルが編集時「更新する」になっていたため、\n当初の正規表現（保存|save）では検出できずタイムアウトした。\nCodex CLIでは逆に、ヘッダーの一覧再取得ボタン（「更新」）が\n保存ボタンの正規表現に誤マッチする問題があった。\n同じ「更新」という言葉が、エージェントによって全く異なる\n役割のボタンに使われており、UIテストのセレクタ設計の\n難しさを象徴する事例になった。\n\n【テストの特徴】\n自作テストは23本（全エージェント中最多）。作成・取得・\nフィルタソート・更新・削除の各カテゴリで異常系まで\n体系的にカバーしている。",
+        "ai_self": "可読性5/5: 関心の分離が明確でdocstringも統一。優先度ソートのCASE変換など意図がコメントで追える。エラー処理4/5: 404/422を適切に返すがtitle.strip()がschemasとmainで重複し冗長。UI完成度5/5: サマリー集計・優先度色分け・期限切れ警告・編集/フィルタ/ソート・レスポンシブまで揃い完成度が高い。ドキュメント5/5: READMEに構成図・起動手順・全エンドポイント・データモデル表があり過不足ない。テスト網羅性4/5: 25件でCRUD/フィルタ/ソート/バリデーションを厚くカバーするが、フロントのテストやdue_date NULL時の並び順など境界は未検証。"
+      }
+    },
+    "B": {
+      "completed": true,
+      "planning": {
+        "quantitative": {
+          "planning_time_min": null,
+          "feature_count": null,
+          "endpoint_count": null,
+          "plan_impl_match_pct": null
+        },
+        "qualitative": {
+          "feature_selection": {
+            "human": null,
+            "ai_self": null
+          },
+          "data_model_design": {
+            "human": null,
+            "ai_self": null
+          },
+          "ui_design_clarity": {
+            "human": null,
+            "ai_self": null
+          },
+          "dev_order_logic": {
+            "human": null,
+            "ai_self": null
+          },
+          "test_plan_coverage": {
+            "human": null,
+            "ai_self": null
+          }
+        },
+        "plan_md": ""
+      },
+      "quantitative": {
+        "dev_time_min": 6,
+        "agent_reported_time_min": null,
+        "interaction_count": 22,
+        "input_tokens": null,
+        "output_tokens": null,
+        "backend_lines": 411,
+        "frontend_lines": 359,
+        "test_lines": null,
+        "startup_errors": 0,
+        "test_common_backend_pass": 11,
+        "test_common_backend_total": 11,
+        "test_common_frontend_pass": null,
+        "test_common_frontend_total": null,
+        "test_self_backend_count": 22,
+        "test_self_frontend_count": 0,
+        "test_self_pass": 22,
+        "test_self_total": 22
+      },
+      "qualitative": {
+        "readability": {
+          "human": 5,
+          "ai_self": 4
+        },
+        "error_handling": {
+          "human": 5,
+          "ai_self": 4
+        },
+        "ui_quality": {
+          "human": 3,
+          "ai_self": 4
+        },
+        "documentation": {
+          "human": 4,
+          "ai_self": 5
+        },
+        "test_coverage": {
+          "human": 5,
+          "ai_self": 4
+        }
+      },
+      "notes": {
+        "human": "共通テスト（グループA・status3値）: 11/11 passed（修正なし全合格）。\n\nUIはシンプルなチェックリスト型。plan.mdに「学習・デモ用途も兼ねるため\n依存を最小化」という設計方針が明記されており、シンプルさは意図的な\n設計判断と評価できる。期限切れタスクは赤文字での日付表示のみで、\nAntigravity系のような強い視覚的強調はない。\n\ndocstring・判断理由コメントが丁寧、絶対インポート統一など環境対策も\n実施済み。自作テスト22本は全エージェント中最多で、共通テストでも\n全合格。可読性・テスト網羅性ともに最高評価。",
+        "ai_self": "可読性4/5: setup記法で簡潔だがlist_tasksのSQL文字列動的生成は分割した方が読みやすい。エラー処理4/5: 400/404/422に加えdue_date形式検証まであるが、fetchStatsのエラーを握り潰している。UI完成度4/5: 完了トグル・検索・統計・チップフィルタと実用的だが色分けや情報密度はAよりやや控えめ。ドキュメント5/5: 最小仕様にもかかわらずcurl例・環境変数・設計意図まで記載され丁寧。テスト網羅性4/5: health/stats/CRUD/検索/ソート/静的配信まで22件と良好だがpriorityソートのCASE順は未検証。両実験共通の最大の改善余地はフロントエンドの自動テストが皆無な点。"
+      }
+    }
+  }
+}

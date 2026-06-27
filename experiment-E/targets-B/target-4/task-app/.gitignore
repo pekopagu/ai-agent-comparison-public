@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+
+# SQLite データベース
+*.db
+
+# OS / エディタ
+.DS_Store
+.vscode/

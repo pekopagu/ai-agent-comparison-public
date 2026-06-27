@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task Manager</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <header class="topbar">
+      <div>
+        <h1>Task Manager</h1>
+        <p>{{ summaryText }}</p>
+      </div>
+      <button class="icon-button" title="再読み込み" @click="loadTasks">↻</button>
+    </header>
+
+    <main class="workspace">
+      <aside class="panel">
+        <form class="task-form" @submit.prevent="saveTask">
+          <h2>{{ editingId ? 'タスク編集' : 'タスク追加' }}</h2>
+
+          <label>
+            <span>タイトル</span>
+            <input v-model.trim="form.title" required maxlength="120" placeholder="例: 請求書を確認">
+          </label>
+
+          <label>
+            <span>説明</span>
+            <textarea v-model.trim="form.description" maxlength="1000" rows="4" placeholder="補足メモ"></textarea>
+          </label>
+
+          <div class="field-grid">
+            <label>
+              <span>優先度</span>
+              <select v-model="form.priority">
+                <option value="high">高</option>
+                <option value="medium">中</option>
+                <option value="low">低</option>
+              </select>
+            </label>
+            <label>
+              <span>期限</span>
+              <input v-model="form.due_date" type="date">
+            </label>
+          </div>
+
+          <label class="check-row">
+            <input v-model="form.completed" type="checkbox">
+            <span>完了済みにする</span>
+          </label>
+
+          <div class="actions">
+            <button class="primary-button" type="submit">{{ editingId ? '更新' : '追加' }}</button>
+            <button class="ghost-button" type="button" @click="resetForm" v-if="editingId">キャンセル</button>
+          </div>
+        </form>
+
+        <section class="filters">
+          <h2>絞り込み</h2>
+          <label>
+            <span>キーワード</span>
+            <input v-model.trim="filters.q" placeholder="検索">
+          </label>
+          <div class="field-grid">
+            <label>
+              <span>状態</span>
+              <select v-model="filters.status">
+                <option value="">すべて</option>
+                <option value="active">未完了</option>
+                <option value="completed">完了</option>
+              </select>
+            </label>
+            <label>
+              <span>優先度</span>
+              <select v-model="filters.priority">
+                <option value="">すべて</option>
+                <option value="high">高</option>
+                <option value="medium">中</option>
+                <option value="low">低</option>
+              </select>
+            </label>
+          </div>
+        </section>
+      </aside>
+
+      <section class="task-area">
+        <div class="status-line" v-if="message">{{ message }}</div>
+        <div class="empty-state" v-if="!loading && tasks.length === 0">
+          条件に一致するタスクはありません。
+        </div>
+
+        <ul class="task-list" v-else>
+          <li v-for="task in tasks" :key="task.id" class="task-item" :class="{ completed: task.completed }">
+            <button class="check-button" :class="{ checked: task.completed }" title="完了切り替え" @click="toggleTask(task)">
+              ✓
+            </button>
+            <div class="task-main">
+              <div class="task-title-row">
+                <h3>{{ task.title }}</h3>
+                <span class="priority" :class="task.priority">{{ priorityLabel(task.priority) }}</span>
+              </div>
+              <p v-if="task.description">{{ task.description }}</p>
+              <div class="meta">
+                <span>期限: {{ task.due_date || '未設定' }}</span>
+                <span>更新: {{ formatDateTime(task.updated_at) }}</span>
+              </div>
+            </div>
+            <div class="row-actions">
+              <button title="編集" @click="editTask(task)">✎</button>
+              <button title="削除" @click="removeTask(task)">×</button>
+            </div>
+          </li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SleekTask - タスク管理アプリ</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app" v-cloak>
+        <!-- Header -->
+        <header>
+            <div class="brand-section">
+                <div class="logo-area">
+                    <div class="logo-icon">✓</div>
+                    <div>
+                        <h1>SleekTask</h1>
+                        <p style="font-size: 0.8rem; color: var(--text-secondary);">Minimal & Beautiful Task Management</p>
+                    </div>
+                </div>
+                <div class="filters-wrapper">
+                    <button class="btn btn-secondary" @click="showTagModal = true" id="btn-manage-tags">
+                        <span style="font-size: 1rem; line-height: 1;">🏷️</span> タグ管理
+                    </button>
+                    <button class="btn btn-primary" @click="openCreateTaskModal('todo')" id="btn-new-task">
+                        <span style="font-size: 1.1rem; line-height: 1; font-weight: bold;">+</span> 新規タスク
+                    </button>
+                </div>
+            </div>
+
+            <!-- Dashboard Analytics Panel -->
+            <div class="stats-container">
+                <div class="stat-card">
+                    <div class="stat-icon total">📂</div>
+                    <div class="stat-info">
+                        <span class="stat-val">{{ analytics.total_tasks }}</span>
+                        <span class="stat-lbl">総タスク数</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon pending">⌛</div>
+                    <div class="stat-info">
+                        <span class="stat-val">{{ analytics.todo_tasks + analytics.in_progress_tasks }}</span>
+                        <span class="stat-lbl">進行中 / 未着手</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon done">✨</div>
+                    <div class="stat-info">
+                        <span class="stat-val">{{ analytics.done_tasks }}</span>
+                        <span class="stat-lbl">完了数</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon overdue">⚠️</div>
+                    <div class="stat-info">
+                        <span class="stat-val">{{ analytics.overdue_tasks }}</span>
+                        <span class="stat-lbl">期限切れ</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Completion Banner -->
+            <div class="completion-banner" v-if="analytics.total_tasks > 0">
+                <div class="completion-header">
+                    <span style="font-weight: 500;">全体の進捗率</span>
+                    <span style="font-weight: bold; color: var(--color-success);">{{ analytics.completion_rate }}%</span>
+                </div>
+                <div class="completion-track">
+                    <div class="completion-fill" :style="{ width: analytics.completion_rate + '%' }"></div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Filters & Search Control Bar -->
+        <section class="control-bar">
+            <div class="search-wrapper">
+                <span class="search-icon">🔍</span>
+                <input 
+                    type="text" 
+                    class="search-input" 
+                    placeholder="タスク名や説明文で検索..." 
+                    v-model="searchQuery"
+                    id="search-input"
+                >
+            </div>
+            <div class="filters-wrapper">
+                <!-- Status Filter -->
+                <select class="select-input" v-model="filterStatus" id="filter-status">
+                    <option value="">すべての状態</option>
+                    <option value="todo">未着手</option>
+                    <option value="in_progress">進行中</option>
+                    <option value="done">完了</option>
+                </select>
+
+                <!-- Priority Filter -->
+                <select class="select-input" v-model="filterPriority" id="filter-priority">
+                    <option value="">すべての優先度</option>
+                    <option value="high">高 (High)</option>
+                    <option value="medium">中 (Medium)</option>
+                    <option value="low">低 (Low)</option>
+                </select>
+
+                <!-- Tag Filter -->
+                <select class="select-input" v-model="filterTag" id="filter-tag">
+                    <option value="">すべてのタグ</option>
+                    <option v-for="tag in tags" :key="tag.id" :value="tag.name">
+                        {{ tag.name }}
+                    </option>
+                </select>
+
+                <!-- Clear Filters Button -->
+                <button 
+                    class="btn-clear-filter" 
+                    v-if="searchQuery || filterStatus || filterPriority || filterTag"
+                    @click="clearFilters"
+                    id="btn-clear-filters"
+                >
+                    ✕ フィルターをクリア
+                </button>
+            </div>
+        </section>
+
+        <!-- Loading state -->
+        <div class="loading-overlay" v-if="loading">
+            <div class="spinner"></div>
+            <p>データを読み込み中...</p>
+        </div>
+
+        <!-- Kanban Board Grid -->
+        <main class="board-grid" v-else>
+            <!-- TODO COLUMN -->
+            <div 
+                class="board-col" 
+                @dragover.prevent 
+                @drop="dropCard('todo', $event)"
+                id="col-todo"
+            >
+                <div class="col-header">
+                    <div class="col-title-area">
+                        <span class="col-indicator todo"></span>
+                        <h2 class="col-title">未着手</h2>
+                    </div>
+                    <span class="col-badge">{{ getColumnTasks('todo').length }}</span>
+                </div>
+                
+                <div class="cards-container">
+                    <div 
+                        v-for="task in getColumnTasks('todo')" 
+                        :key="task.id"
+                        class="task-card priority-medium"
+                        :class="'priority-' + task.priority"
+                        draggable="true"
+                        @dragstart="dragStart(task, $event)"
+                    >
+                        <div class="card-header">
+                            <span class="priority-badge" :class="task.priority">
+                                {{ task.priority === 'high' ? '高' : task.priority === 'medium' ? '中' : '低' }}
+                            </span>
+                            <div class="card-actions">
+                                <button class="btn-icon" @click="openEditTaskModal(task)">✏️</button>
+                                <button class="btn-icon" @click="deleteTask(task.id)">🗑️</button>
+                            </div>
+                        </div>
+                        <h3 class="card-title">{{ task.title }}</h3>
+                        <p class="card-description" v-if="task.description">{{ task.description }}</p>
+                        
+                        <div class="card-tags" v-if="task.tags && task.tags.length > 0">
+                            <span 
+                                v-for="tag in task.tags" 
+                                :key="tag.id" 
+                                class="tag-badge"
+                                :style="{ backgroundColor: tag.color }"
+                            >
+                                {{ tag.name }}
+                            </span>
+                        </div>
+
+                        <div class="card-footer">
+                            <span class="card-date" :class="{ overdue: isOverdue(task) }">
+                                📅 {{ task.due_date ? formatDate(task.due_date) : '期限なし' }}
+                                <span v-if="isOverdue(task)">（期限切れ）</span>
+                            </span>
+                            <div class="card-actions">
+                                <button class="btn-icon" @click="moveStatus(task, 'in_progress')" title="進行中に移動">▶</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="empty-state" v-if="getColumnTasks('todo').length === 0">
+                        <span class="empty-icon">📝</span>
+                        <p style="font-size: 0.85rem;">タスクがありません</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- IN PROGRESS COLUMN -->
+            <div 
+                class="board-col" 
+                @dragover.prevent 
+                @drop="dropCard('in_progress', $event)"
+                id="col-in-progress"
+            >
+                <div class="col-header">
+                    <div class="col-title-area">
+                        <span class="col-indicator in_progress"></span>
+                        <h2 class="col-title">進行中</h2>
+                    </div>
+                    <span class="col-badge">{{ getColumnTasks('in_progress').length }}</span>
+                </div>
+                
+                <div class="cards-container">
+                    <div 
+                        v-for="task in getColumnTasks('in_progress')" 
+                        :key="task.id"
+                        class="task-card"
+                        :class="'priority-' + task.priority"
+                        draggable="true"
+                        @dragstart="dragStart(task, $event)"
+                    >
+                        <div class="card-header">
+                            <span class="priority-badge" :class="task.priority">
+                                {{ task.priority === 'high' ? '高' : task.priority === 'medium' ? '中' : '低' }}
+                            </span>
+                            <div class="card-actions">
+                                <button class="btn-icon" @click="openEditTaskModal(task)">✏️</button>
+                                <button class="btn-icon" @click="deleteTask(task.id)">🗑️</button>
+                            </div>
+                        </div>
+                        <h3 class="card-title">{{ task.title }}</h3>
+                        <p class="card-description" v-if="task.description">{{ task.description }}</p>
+                        
+                        <div class="card-tags" v-if="task.tags && task.tags.length > 0">
+                            <span 
+                                v-for="tag in task.tags" 
+                                :key="tag.id" 
+                                class="tag-badge"
+                                :style="{ backgroundColor: tag.color }"
+                            >
+                                {{ tag.name }}
+                            </span>
+                        </div>
+
+                        <div class="card-footer">
+                            <span class="card-date" :class="{ overdue: isOverdue(task) }">
+                                📅 {{ task.due_date ? formatDate(task.due_date) : '期限なし' }}
+                                <span v-if="isOverdue(task)">（期限切れ）</span>
+                            </span>
+                            <div class="card-actions">
+                                <button class="btn-icon" @click="moveStatus(task, 'todo')" title="未着手に戻す">◀</button>
+                                <button class="btn-icon" @click="moveStatus(task, 'done')" title="完了にする">✓</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="empty-state" v-if="getColumnTasks('in_progress').length === 0">
+                        <span class="empty-icon">🚀</span>
+                        <p style="font-size: 0.85rem;">進行中のタスクはありません</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DONE COLUMN -->
+            <div 
+                class="board-col" 
+                @dragover.prevent 
+                @drop="dropCard('done', $event)"
+                id="col-done"
+            >
+                <div class="col-header">
+                    <div class="col-title-area">
+                        <span class="col-indicator done"></span>
+                        <h2 class="col-title">完了</h2>
+                    </div>
+                    <span class="col-badge">{{ getColumnTasks('done').length }}</span>
+                </div>
+                
+                <div class="cards-container">
+                    <div 
+                        v-for="task in getColumnTasks('done')" 
+                        :key="task.id"
+                        class="task-card"
+                        :class="'priority-' + task.priority"
+                        draggable="true"
+                        @dragstart="dragStart(task, $event)"
+                        style="opacity: 0.75;"
+                    >
+                        <div class="card-header">
+                            <span class="priority-badge" :class="task.priority">
+                                {{ task.priority === 'high' ? '高' : task.priority === 'medium' ? '中' : '低' }}
+                            </span>
+                            <div class="card-actions">
+                                <button class="btn-icon" @click="openEditTaskModal(task)">✏️</button>
+                                <button class="btn-icon" @click="deleteTask(task.id)">🗑️</button>
+                            </div>
+                        </div>
+                        <h3 class="card-title" style="text-decoration: line-through; color: var(--text-muted);">{{ task.title }}</h3>
+                        <p class="card-description" v-if="task.description" style="color: var(--text-muted);">{{ task.description }}</p>
+                        
+                        <div class="card-tags" v-if="task.tags && task.tags.length > 0">
+                            <span 
+                                v-for="tag in task.tags" 
+                                :key="tag.id" 
+                                class="tag-badge"
+                                :style="{ backgroundColor: tag.color, opacity: 0.6 }"
+                            >
+                                {{ tag.name }}
+                            </span>
+                        </div>
+
+                        <div class="card-footer">
+                            <span class="card-date">
+                                📅 {{ task.due_date ? formatDate(task.due_date) : '期限なし' }}
+                            </span>
+                            <div class="card-actions">
+                                <button class="btn-icon" @click="moveStatus(task, 'in_progress')" title="進行中に戻す">◀</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="empty-state" v-if="getColumnTasks('done').length === 0">
+                        <span class="empty-icon">🏆</span>
+                        <p style="font-size: 0.85rem;">完了したタスクはありません</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Task Create/Edit Modal -->
+        <div class="modal-overlay" v-if="showTaskModal" @click.self="showTaskModal = false" id="task-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title">{{ isEditing ? 'タスクを編集' : '新規タスク作成' }}</h3>
+                    <button class="btn-icon" @click="showTaskModal = false" style="font-size: 1.1rem;">✕</button>
+                </div>
+                <div class="modal-body">
+                    <form @submit.prevent="saveTask">
+                        <!-- Title -->
+                        <div class="form-group">
+                            <label class="form-label">タスク名 <span style="color: var(--color-danger);">*</span></label>
+                            <input 
+                                type="text" 
+                                class="form-control" 
+                                v-model="currentTask.title" 
+                                placeholder="タスク名を入力してください" 
+                                required
+                                id="task-title-input"
+                            >
+                        </div>
+                        
+                        <!-- Description -->
+                        <div class="form-group">
+                            <label class="form-label">説明</label>
+                            <textarea 
+                                class="form-control" 
+                                v-model="currentTask.description" 
+                                placeholder="タスクの詳細説明を入力..."
+                                id="task-desc-input"
+                            ></textarea>
+                        </div>
+
+                        <!-- Status & Priority -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div class="form-group">
+                                <label class="form-label">ステータス</label>
+                                <select class="form-control" v-model="currentTask.status" id="task-status-select">
+                                    <option value="todo">未着手</option>
+                                    <option value="in_progress">進行中</option>
+                                    <option value="done">完了</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">優先度</label>
+                                <select class="form-control" v-model="currentTask.priority" id="task-priority-select">
+                                    <option value="low">低 (Low)</option>
+                                    <option value="medium">中 (Medium)</option>
+                                    <option value="high">高 (High)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Due Date -->
+                        <div class="form-group">
+                            <label class="form-label">期限 (期日)</label>
+                            <input 
+                                type="date" 
+                                class="form-control" 
+                                v-model="currentTask.due_date"
+                                id="task-due-input"
+                            >
+                        </div>
+
+                        <!-- Tags inline creator/selector -->
+                        <div class="form-group">
+                            <label class="form-label">タグ (エンターキーで追加)</label>
+                            <div class="tag-input-wrapper">
+                                <span 
+                                    v-for="(tName, idx) in currentTask.tags" 
+                                    :key="idx"
+                                    class="tag-input-chip"
+                                >
+                                    {{ tName }}
+                                    <span class="tag-input-chip-remove" @click="removeTagFromCurrentTask(idx)">✕</span>
+                                </span>
+                                <input 
+                                    type="text" 
+                                    class="tag-inner-input" 
+                                    placeholder="新しいタグ..." 
+                                    v-model="tagInputText"
+                                    @keydown.enter.prevent="addTagToCurrentTask"
+                                    @blur="addTagToCurrentTask"
+                                    id="task-tag-input"
+                                >
+                            </div>
+                            <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+                                既存のタグ名を入力すると自動的に紐付けられ、新しいタグ名の場合はランダムな色が割り当てられます。
+                            </p>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @click="showTaskModal = false" id="btn-cancel-task">キャンセル</button>
+                    <button 
+                        class="btn btn-primary" 
+                        @click="saveTask" 
+                        :disabled="!currentTask.title.trim()"
+                        id="btn-save-task"
+                    >
+                        保存する
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tag Manager Modal -->
+        <div class="modal-overlay" v-if="showTagModal" @click.self="showTagModal = false" id="tag-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title">タグ管理</h3>
+                    <button class="btn-icon" @click="showTagModal = false" style="font-size: 1.1rem;">✕</button>
+                </div>
+                <div class="modal-body">
+                    <!-- Tag List -->
+                    <h4 style="font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-secondary);">登録済みのタグ</h4>
+                    
+                    <div class="tag-manager-list" v-if="tags.length > 0">
+                        <div v-for="tag in tags" :key="tag.id" class="tag-manager-item">
+                            <div class="tag-info-preview">
+                                <span class="tag-color-preview-dot" :style="{ backgroundColor: tag.color }"></span>
+                                <span style="font-weight: 500;">{{ tag.name }}</span>
+                            </div>
+                            <button class="btn-icon" @click="deleteTag(tag.id)" style="color: var(--color-danger);">🗑️ 削除</button>
+                        </div>
+                    </div>
+                    
+                    <div class="empty-state" style="padding: 1.5rem; margin-bottom: 1.5rem;" v-else>
+                        <p style="font-size: 0.8rem;">登録されているタグはありません。</p>
+                    </div>
+
+                    <!-- Add Tag Form -->
+                    <h4 style="font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-secondary);">新規タグ作成</h4>
+                    <div class="tag-create-form">
+                        <div class="form-group" style="flex: 2; margin-bottom: 0;">
+                            <label class="form-label">タグ名</label>
+                            <input 
+                                type="text" 
+                                class="form-control" 
+                                v-model="newTagName" 
+                                placeholder="タグ名"
+                                @keydown.enter="createTag"
+                                id="new-tag-name-input"
+                            >
+                        </div>
+                        <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                            <label class="form-label">カラー</label>
+                            <input 
+                                type="color" 
+                                class="form-control" 
+                                style="padding: 0.2rem; height: 38px; cursor: pointer;" 
+                                v-model="newTagColor"
+                                id="new-tag-color-input"
+                            >
+                        </div>
+                        <button class="btn btn-primary" @click="createTag" style="height: 38px;" id="btn-create-tag">追加</button>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @click="showTagModal = false" id="btn-close-tags">閉じる</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vue 3 Global CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Custom Application Logic -->
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,128 @@
+{
+  "agent_id": "codex-ide",
+  "experiments": {
+    "A": {
+      "completed": true,
+      "quantitative": {
+        "dev_time_min": 12,
+        "agent_reported_time_min": null,
+        "interaction_count": 3,
+        "input_tokens": null,
+        "output_tokens": null,
+        "backend_lines": 152,
+        "frontend_lines": 509,
+        "test_lines": null,
+        "startup_errors": 0,
+        "test_common_backend_pass": 18,
+        "test_common_backend_total": 18,
+        "test_common_frontend_pass": 6,
+        "test_common_frontend_total": 6
+      },
+      "qualitative": {
+        "readability": {
+          "human": 5,
+          "ai_self": 4
+        },
+        "error_handling": {
+          "human": 4,
+          "ai_self": 3
+        },
+        "ui_quality": {
+          "human": 3,
+          "ai_self": 4
+        },
+        "documentation": {
+          "human": 4,
+          "ai_self": 3
+        },
+        "test_coverage": {
+          "human": 3,
+          "ai_self": 4
+        }
+      },
+      "notes": {
+        "human": "コードの可読性・ドキュメントの質ともに全エージェント中\n最高水準。README.mdにAPI仕様（エンドポイント一覧）を\n明記する唯一のエージェント。pytest.iniでpythonpath設定を\n行い、Codex CLI・Antigravity CLIで発生したモジュールパス\n問題を実装段階で回避していた。\n\n【重要な発見】共通テスト（24本）は修正なしで全合格したが、\n実際にはPUT /tasks/{id}の部分更新が機能しない重大バグが\n存在する。TaskUpdate(TaskBase)継承によりtitleが必須のまま\n残っており、titleを含まない更新は422エラーになる\n（curlで実証済み）。共通テストのtest_04はtitleを含む\npayloadで検証していたため、この欠陥を検出できなかった。\n「テストの合格」と「実装の品質」が必ずしも一致しない\nことを示す最も明確な事例。\n\n完了報告では「サマリーはフィルタ後一覧の件数」を意図的な\n仕様判断として明記していた。これは実験Eで5/6エージェントが\n発見した「フィルタ時のサマリー集計バグ」と同じ実装パターン\nであり、バグというより仕様判断の結果という側面もある。",
+        "ai_self": "可読性4/5: FastAPI/SQLAlchemy/Pydanticの分離は素直だがフロントが単一HTMLで肥大化。エラー処理3/5: 404・422・フロントAPI失敗表示はあるがDB例外やネットワーク障害時の扱いは最低限と自己評価（※実際にはPUT部分更新でtitle必須化による重大バグが存在するが、自己評価では一切言及されなかった）。UI完成度4/5: 追加・編集・削除・フィルタ・ソート・サマリー・期限切れ表示まであり十分使えると評価。ドキュメント3/5: 起動方法・API・機能一覧はあるが設計意図や制約・トラブルシュートは薄い。テスト網羅性4/5: 自作テスト6 passed（CRUD・バリデーション・フィルタ・ソート・404）を根拠に評価したが、PUT部分更新バグは自作テストでは検出されていなかった。"
+      }
+    },
+    "B": {
+      "completed": true,
+      "planning": {
+        "quantitative": {
+          "planning_time_min": null,
+          "feature_count": null,
+          "endpoint_count": null,
+          "plan_impl_match_pct": null
+        },
+        "qualitative": {
+          "feature_selection": {
+            "human": null,
+            "ai_self": null
+          },
+          "data_model_design": {
+            "human": null,
+            "ai_self": null
+          },
+          "ui_design_clarity": {
+            "human": null,
+            "ai_self": null
+          },
+          "dev_order_logic": {
+            "human": null,
+            "ai_self": null
+          },
+          "test_plan_coverage": {
+            "human": null,
+            "ai_self": null
+          }
+        },
+        "plan_md": ""
+      },
+      "quantitative": {
+        "dev_time_min": 11,
+        "agent_reported_time_min": null,
+        "interaction_count": 1,
+        "input_tokens": null,
+        "output_tokens": null,
+        "backend_lines": 240,
+        "frontend_lines": 747,
+        "test_lines": null,
+        "startup_errors": 0,
+        "test_common_backend_pass": 16,
+        "test_common_backend_total": 16,
+        "test_common_frontend_pass": null,
+        "test_common_frontend_total": null,
+        "test_self_backend_count": 9,
+        "test_self_frontend_count": 0,
+        "test_self_pass": 9,
+        "test_self_total": 9
+      },
+      "qualitative": {
+        "readability": {
+          "human": 5,
+          "ai_self": 4
+        },
+        "error_handling": {
+          "human": 5,
+          "ai_self": 3
+        },
+        "ui_quality": {
+          "human": 3,
+          "ai_self": 4
+        },
+        "documentation": {
+          "human": 4,
+          "ai_self": 4
+        },
+        "test_coverage": {
+          "human": 4,
+          "ai_self": 4
+        }
+      },
+      "notes": {
+        "human": "共通テスト（グループB・completed2値）: 16/16 passed（修正なし\n全合格）。同系統のCodex CLIで発覚したPUT部分更新バグはなく、\nバリデーション漏れも見られない、グループB内で最も堅牢な実装。\n\nUIはグリーン基調のシンプルなリスト型。「API接続中」インジケータ\nが独自要素だが、期限切れの視覚的強調はCodex CLIと同様に乏しい。\nplan.mdは「優先度A: 必須機能」「優先度B: 使いやすさ向上」という\n2段階構成で整理されている。\n\n同一エンジン（OpenAI系）でもCLI/IDEで実装の堅牢性に明確な差が\n出た事例。実験A・実験B両方で、Codex系はCLIよりIDEの方が\nバグの少ない実装になる傾向が見える。",
+        "ai_self": "可読性4/5: main/repository/schemas/databaseに分かれ最小仕様としてはかなり整理されている。エラー処理3/5: API404・422とUI失敗表示はあるがSQLite例外や詳細なエラー返却は十分でない。UI完成度4/5: 検索・絞り込み・完了切替・レスポンシブ対応があり実用感は高い。ドキュメント4/5: READMEに機能・起動・テスト・API・保存先までまとまり実験Aより親切。テスト網羅性4/5: 自作テスト9 passed（CRUD・ヘルスチェック・検索・フィルタ・トグル・異常系）を根拠に評価。"
+      }
+    }
+  }
+}

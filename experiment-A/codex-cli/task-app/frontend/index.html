@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>タスク管理</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --text: #17202a;
+      --muted: #667085;
+      --line: #d7dde5;
+      --accent: #0f766e;
+      --danger: #b42318;
+      --warning: #b54708;
+      --done: #2e7d32;
+      --doing: #1d4ed8;
+      --todo: #6b7280;
+      font-family: "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      min-width: 320px;
+    }
+    button, input, textarea, select {
+      font: inherit;
+    }
+    button {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 6px;
+      min-height: 36px;
+      padding: 0 12px;
+      cursor: pointer;
+    }
+    button.primary {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+    button.danger {
+      color: var(--danger);
+    }
+    button:disabled {
+      cursor: not-allowed;
+      opacity: .55;
+    }
+    .app {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-end;
+      margin-bottom: 20px;
+    }
+    h1 {
+      margin: 0 0 4px;
+      font-size: 28px;
+      letter-spacing: 0;
+    }
+    .subtle {
+      color: var(--muted);
+      margin: 0;
+      font-size: 14px;
+    }
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(96px, 1fr));
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .summary-item {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .summary-item span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .summary-item strong {
+      display: block;
+      margin-top: 4px;
+      font-size: 22px;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 18px;
+      align-items: start;
+    }
+    section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    h2 {
+      font-size: 18px;
+      margin: 0 0 14px;
+      letter-spacing: 0;
+    }
+    label {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 12px;
+      color: #344054;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    input, textarea, select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 9px 10px;
+      background: #fff;
+      color: var(--text);
+    }
+    textarea {
+      min-height: 90px;
+      resize: vertical;
+    }
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .error {
+      color: var(--danger);
+      background: #fff1f0;
+      border: 1px solid #fecdca;
+      border-radius: 6px;
+      padding: 10px;
+      margin-bottom: 12px;
+      font-size: 14px;
+    }
+    .filters {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(120px, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .task-list {
+      display: grid;
+      gap: 10px;
+    }
+    .task-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+      background: #fff;
+    }
+    .task-card.overdue {
+      border-color: #f79009;
+      background: #fffbeb;
+    }
+    .task-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .task-title {
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+    .task-desc {
+      color: #475467;
+      margin: 0;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .badge {
+      border-radius: 999px;
+      padding: 3px 8px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid transparent;
+    }
+    .status-todo { color: var(--todo); background: #f2f4f7; border-color: #e4e7ec; }
+    .status-doing { color: var(--doing); background: #eff6ff; border-color: #bfdbfe; }
+    .status-done { color: var(--done); background: #ecfdf3; border-color: #abefc6; }
+    .priority-low { color: #3f6212; background: #f7fee7; border-color: #d9f99d; }
+    .priority-medium { color: #854d0e; background: #fefce8; border-color: #fde68a; }
+    .priority-high { color: #991b1b; background: #fef2f2; border-color: #fecaca; }
+    .meta {
+      color: var(--muted);
+      font-size: 13px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .overdue-text {
+      color: var(--warning);
+      font-weight: 700;
+    }
+    .empty {
+      color: var(--muted);
+      text-align: center;
+      padding: 32px 8px;
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+    }
+
+    @media (max-width: 840px) {
+      .app { padding: 16px; }
+      header { display: block; }
+      .layout { grid-template-columns: 1fr; }
+      .summary { grid-template-columns: repeat(2, 1fr); }
+      .filters { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 520px) {
+      .field-row, .filters, .summary { grid-template-columns: 1fr; }
+      .task-top { display: grid; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app" class="app">
+    <header>
+      <div>
+        <h1>タスク管理</h1>
+        <p class="subtle">作業の状態、優先度、期限をまとめて管理します。</p>
+      </div>
+      <button @click="loadTasks" :disabled="loading">更新</button>
+    </header>
+
+    <div class="summary">
+      <div class="summary-item"><span>全件</span><strong>{{ summary.total }}</strong></div>
+      <div class="summary-item"><span>未着手</span><strong>{{ summary.todo }}</strong></div>
+      <div class="summary-item"><span>進行中</span><strong>{{ summary.doing }}</strong></div>
+      <div class="summary-item"><span>完了</span><strong>{{ summary.done }}</strong></div>
+    </div>
+
+    <main class="layout">
+      <section>
+        <h2>{{ editingId ? 'タスク編集' : 'タスク追加' }}</h2>
+        <div v-if="error" class="error">{{ error }}</div>
+        <form @submit.prevent="submitTask">
+          <label>
+            タイトル
+            <input v-model.trim="form.title" maxlength="255" required>
+          </label>
+          <label>
+            説明
+            <textarea v-model="form.description"></textarea>
+          </label>
+          <div class="field-row">
+            <label>
+              状態
+              <select v-model="form.status">
+                <option value="todo">未着手</option>
+                <option value="doing">進行中</option>
+                <option value="done">完了</option>
+              </select>
+            </label>
+            <label>
+              優先度
+              <select v-model="form.priority">
+                <option value="low">低</option>
+                <option value="medium">中</option>
+                <option value="high">高</option>
+              </select>
+            </label>
+          </div>
+          <label>
+            期限
+            <input type="date" v-model="form.due_date">
+          </label>
+          <div class="actions">
+            <button class="primary" type="submit" :disabled="saving">{{ editingId ? '保存' : '追加' }}</button>
+            <button type="button" @click="resetForm" v-if="editingId">キャンセル</button>
+          </div>
+        </form>
+      </section>
+
+      <section>
+        <h2>タスク一覧</h2>
+        <div class="filters">
+          <label>
+            状態
+            <select v-model="filters.status" @change="loadTasks">
+              <option value="">すべて</option>
+              <option value="todo">未着手</option>
+              <option value="doing">進行中</option>
+              <option value="done">完了</option>
+            </select>
+          </label>
+          <label>
+            優先度
+            <select v-model="filters.priority" @change="loadTasks">
+              <option value="">すべて</option>
+              <option value="low">低</option>
+              <option value="medium">中</option>
+              <option value="high">高</option>
+            </select>
+          </label>
+          <label>
+            ソート
+            <select v-model="filters.sort" @change="loadTasks">
+              <option value="created_at">作成日</option>
+              <option value="due_date">期限</option>
+              <option value="priority">優先度</option>
+            </select>
+          </label>
+          <label>
+            順序
+            <select v-model="filters.order" @change="loadTasks">
+              <option value="desc">降順</option>
+              <option value="asc">昇順</option>
+            </select>
+          </label>
+        </div>
+
+        <div v-if="loading" class="empty">読み込み中です。</div>
+        <div v-else-if="tasks.length === 0" class="empty">タスクはありません。</div>
+        <div v-else class="task-list">
+          <article v-for="task in tasks" :key="task.id" class="task-card" :class="{ overdue: isOverdue(task) }">
+            <div class="task-top">
+              <div>
+                <div class="task-title">{{ task.title }}</div>
+                <p v-if="task.description" class="task-desc">{{ task.description }}</p>
+              </div>
+              <div class="badges">
+                <span class="badge" :class="'status-' + task.status">{{ statusLabel(task.status) }}</span>
+                <span class="badge" :class="'priority-' + task.priority">{{ priorityLabel(task.priority) }}</span>
+              </div>
+            </div>
+            <div class="meta">
+              <span>期限: {{ task.due_date || '未設定' }}</span>
+              <span>作成: {{ formatDateTime(task.created_at) }}</span>
+              <span v-if="isOverdue(task)" class="overdue-text">期限切れ</span>
+            </div>
+            <div class="actions">
+              <button @click="startEdit(task)">編集</button>
+              <button class="danger" @click="deleteTask(task)">削除</button>
+            </div>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const { createApp } = Vue;
+    const API_BASE = 'http://localhost:8000';
+
+    createApp({
+      data() {
+        return {
+          tasks: [],
+          allTasks: [],
+          loading: false,
+          saving: false,
+          error: '',
+          editingId: null,
+          form: this.emptyForm(),
+          filters: {
+            status: '',
+            priority: '',
+            sort: 'created_at',
+            order: 'desc'
+          }
+        };
+      },
+      computed: {
+        summary() {
+          return {
+            total: this.allTasks.length,
+            todo: this.allTasks.filter(task => task.status === 'todo').length,
+            doing: this.allTasks.filter(task => task.status === 'doing').length,
+            done: this.allTasks.filter(task => task.status === 'done').length
+          };
+        }
+      },
+      mounted() {
+        this.loadTasks();
+      },
+      methods: {
+        emptyForm() {
+          return { title: '', description: '', status: 'todo', priority: 'medium', due_date: '' };
+        },
+        async request(path, options = {}) {
+          const response = await fetch(`${API_BASE}${path}`, {
+            headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+            ...options
+          });
+          if (!response.ok) {
+            let message = 'リクエストに失敗しました。';
+            try {
+              const body = await response.json();
+              if (Array.isArray(body.detail)) {
+                message = body.detail.map(item => item.msg).join(' / ');
+              } else if (body.detail) {
+                message = body.detail;
+              }
+            } catch (_) {}
+            throw new Error(message);
+          }
+          if (response.status === 204) return null;
+          return response.json();
+        },
+        async loadTasks() {
+          this.loading = true;
+          this.error = '';
+          const params = new URLSearchParams();
+          Object.entries(this.filters).forEach(([key, value]) => {
+            if (value) params.set(key, value);
+          });
+          try {
+            this.tasks = await this.request(`/tasks?${params.toString()}`);
+            this.allTasks = await this.request('/tasks');
+          } catch (error) {
+            this.error = error.message;
+          } finally {
+            this.loading = false;
+          }
+        },
+        async submitTask() {
+          this.error = '';
+          if (!this.form.title.trim()) {
+            this.error = 'タイトルを入力してください。';
+            return;
+          }
+          this.saving = true;
+          const payload = {
+            ...this.form,
+            description: this.form.description || null,
+            due_date: this.form.due_date || null
+          };
+          try {
+            if (this.editingId) {
+              await this.request(`/tasks/${this.editingId}`, { method: 'PUT', body: JSON.stringify(payload) });
+            } else {
+              await this.request('/tasks', { method: 'POST', body: JSON.stringify(payload) });
+            }
+            this.resetForm();
+            await this.loadTasks();
+          } catch (error) {
+            this.error = error.message;
+          } finally {
+            this.saving = false;
+          }
+        },
+        startEdit(task) {
+          this.editingId = task.id;
+          this.form = {
+            title: task.title,
+            description: task.description || '',
+            status: task.status,
+            priority: task.priority,
+            due_date: task.due_date || ''
+          };
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        },
+        async deleteTask(task) {
+          if (!confirm(`「${task.title}」を削除しますか？`)) return;
+          try {
+            await this.request(`/tasks/${task.id}`, { method: 'DELETE' });
+            if (this.editingId === task.id) this.resetForm();
+            await this.loadTasks();
+          } catch (error) {
+            this.error = error.message;
+          }
+        },
+        resetForm() {
+          this.editingId = null;
+          this.form = this.emptyForm();
+          this.error = '';
+        },
+        statusLabel(status) {
+          return { todo: '未着手', doing: '進行中', done: '完了' }[status] || status;
+        },
+        priorityLabel(priority) {
+          return { low: '低', medium: '中', high: '高' }[priority] || priority;
+        },
+        isOverdue(task) {
+          if (!task.due_date || task.status === 'done') return false;
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          return new Date(`${task.due_date}T00:00:00`) < today;
+        },
+        formatDateTime(value) {
+          return new Date(value).toLocaleString('ja-JP');
+        }
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>

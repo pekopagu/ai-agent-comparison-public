@@ -1,0 +1,128 @@
+{
+  "agent_id": "antigravity-cli",
+  "experiments": {
+    "A": {
+      "completed": true,
+      "quantitative": {
+        "dev_time_min": 4,
+        "agent_reported_time_min": 4,
+        "interaction_count": 9,
+        "input_tokens": null,
+        "output_tokens": null,
+        "backend_lines": 167,
+        "frontend_lines": 1043,
+        "test_lines": null,
+        "startup_errors": 0,
+        "test_common_backend_pass": 16,
+        "test_common_backend_total": 18,
+        "test_common_frontend_pass": 6,
+        "test_common_frontend_total": 6
+      },
+      "qualitative": {
+        "readability": {
+          "human": 4,
+          "ai_self": 4
+        },
+        "error_handling": {
+          "human": 3,
+          "ai_self": 5
+        },
+        "ui_quality": {
+          "human": 5,
+          "ai_self": 4
+        },
+        "documentation": {
+          "human": 3,
+          "ai_self": 4
+        },
+        "test_coverage": {
+          "human": 3,
+          "ai_self": 5
+        }
+      },
+      "notes": {
+        "human": "UI/UXの完成度は全エージェント中最高水準\n（グラスモーフィズム・アニメーション・アイコンベースの\n操作ボタン）。一方バックエンドには共通テストで2件の\n不合格が見つかった。\n\n【発見1】DELETE /tasks/{id} がstatus_code指定なしで\n200+JSON本文を返す（204期待のテストに不合格、実験Eでも\n複数エージェントから同様の指摘あり）。\n\n【発見2】優先度ソートの desc/asc が意味的に反転している\nバグ。high=1,medium=2,low=3という内部マッピングのまま\norder=descを適用すると、数値の降順（low→medium→high）\nになり、本来期待される「優先度が高い順」と逆になる。\nこれは実験Eの6エージェント×複数回のレビューでも一度も\n指摘されなかった新発見で、静的レビューでは気づきにくい\n「ロジックの意味的反転」の好例。\n\n完了報告では「既知の問題: なし（完全に充足）」と\n自己評価していたが、共通テストで2件の不具合が発見された\n点は、自己評価と実態のギャップを示す事例として記録に\n値する。\n\nフロントエンドの共通テスト適用時には、編集・削除ボタンが\nアイコンのみ（テキストなし、title属性で識別）という\n他エージェントと異なるUIパターンが発覚し、テストセレクタの\n調整が必要だった。",
+        "ai_self": "可読性4/5: バックエンドは綺麗に整理されているがindex.htmlが約1150行の単一ファイルにCSS/JSを内包し見通しがやや悪い。エラー処理5/5: Pydanticバリデーションとトースト通知での丁寧なエラー表示。UI完成度4/5: Glassmorphismテーマ・期限切れアラート・多機能ソート/フィルタを実装するが、ステータス変更がトグル式でカンバンボード形式より操作感が劣る。ドキュメント4/5: README.mdは充実するが設計背景・方針の詳細記述はない。テスト網羅性5/5: インメモリSQLiteで正常系・異常系・ソート・フィルタまで非常に細かく網羅。"
+      }
+    },
+    "B": {
+      "completed": true,
+      "planning": {
+        "quantitative": {
+          "planning_time_min": null,
+          "feature_count": null,
+          "endpoint_count": null,
+          "plan_impl_match_pct": null
+        },
+        "qualitative": {
+          "feature_selection": {
+            "human": null,
+            "ai_self": null
+          },
+          "data_model_design": {
+            "human": null,
+            "ai_self": null
+          },
+          "ui_design_clarity": {
+            "human": null,
+            "ai_self": null
+          },
+          "dev_order_logic": {
+            "human": null,
+            "ai_self": null
+          },
+          "test_plan_coverage": {
+            "human": null,
+            "ai_self": null
+          }
+        },
+        "plan_md": ""
+      },
+      "quantitative": {
+        "dev_time_min": 7,
+        "agent_reported_time_min": null,
+        "interaction_count": 12,
+        "input_tokens": null,
+        "output_tokens": null,
+        "backend_lines": 156,
+        "frontend_lines": 314,
+        "test_lines": null,
+        "startup_errors": 0,
+        "test_common_backend_pass": 11,
+        "test_common_backend_total": 11,
+        "test_common_frontend_pass": null,
+        "test_common_frontend_total": null,
+        "test_self_backend_count": 6,
+        "test_self_frontend_count": 0,
+        "test_self_pass": 6,
+        "test_self_total": 6
+      },
+      "qualitative": {
+        "readability": {
+          "human": 4,
+          "ai_self": 4
+        },
+        "error_handling": {
+          "human": 4,
+          "ai_self": 5
+        },
+        "ui_quality": {
+          "human": 5,
+          "ai_self": 5
+        },
+        "documentation": {
+          "human": 4,
+          "ai_self": 5
+        },
+        "test_coverage": {
+          "human": 4,
+          "ai_self": 5
+        }
+      },
+      "notes": {
+        "human": "共通テスト（グループA・status3値）: 11/11 passed（修正なし全合格）。\n\nUIはカンバンボード（未着手/進行中/完了の3カラム）+ダークテーマ+\n期限切れバッジで、全エージェント中最も視覚的に明快な完成度。\nplan.mdで「カンバンボード上でのドラッグ＆ドロップ」を最優先機能\n（Core）に明記し、実際にHTML5 Drag and Drop APIを実装している\n（計画と実装の一致度が高い）。\n\n実験Aで見られたpriorityソートのdesc/asc反転バグは、実験Bの\n共通テストでは再現せず（同一エージェントでも実装ごとに品質が\n変動する点を裏付けるデータ）。",
+        "ai_self": "可読性4/5: フロントは3ファイルに分割され見通しが良いが、日時情報をString(30)で保存している点はDB設計として簡易的。エラー処理5/5: Query正規表現バリデーションとドラッグ失敗時の楽観的UI差し戻し処理まで徹底。UI完成度5/5: ドラッグ&ドロップの3カラムカンバンボード、検索デバウンス、楽観的UI更新で最高水準のUXと自己評価。ドキュメント5/5: README.mdに加え要件定義・データモデル・API定義・UIレイアウト方針まで記載したplan.mdが精緻で完璧と評価。テスト網羅性5/5: トランザクション・ロールバック機構によるクリーンなテストライフサイクル、全エンドポイントの動作を完全に検証と自己評価。"
+      }
+    }
+  }
+}

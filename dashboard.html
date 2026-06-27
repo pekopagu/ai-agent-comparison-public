@@ -1,0 +1,1597 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIエージェント比較実験 ダッシュボード</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.4.21/vue.global.prod.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+:root {
+  --bg:#0d0f14; --surface:#161820; --surface2:#1e2028; --border:#2a2d38;
+  --accent:#7c6fff; --accent2:#ff6b6b; --accent3:#43d9a2; --accent4:#ffa94d;
+  --text:#e8eaf0; --text-dim:#7a7f96; --text-dimmer:#4a4f66;
+  --r:8px; --mono:'JetBrains Mono',monospace; --sans:'Inter',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.6;min-height:100vh}
+
+/* Header */
+.hdr{border-bottom:1px solid var(--border);padding:16px 28px;display:flex;align-items:center;justify-content:space-between;background:var(--surface);position:sticky;top:0;z-index:100}
+.hdr-left{display:flex;align-items:center;gap:10px}
+.hdr-badge{font-family:var(--mono);font-size:10px;background:var(--accent);color:#fff;padding:2px 8px;border-radius:4px;letter-spacing:.08em}
+.hdr h1{font-size:15px;font-weight:600;letter-spacing:-.02em}
+.hdr-sub{font-size:12px;color:var(--text-dim)}
+
+/* Layout */
+.layout{display:flex;min-height:calc(100vh - 53px)}
+.sidebar{width:196px;flex-shrink:0;border-right:1px solid var(--border);padding:20px 0;background:var(--surface);position:sticky;top:53px;height:calc(100vh - 53px);overflow-y:auto}
+.sb-label{font-size:10px;font-weight:600;letter-spacing:.1em;color:var(--text-dimmer);padding:0 14px 6px;text-transform:uppercase}
+.sb-sep{height:1px;background:var(--border);margin:8px 14px}
+.nav-item{display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:pointer;color:var(--text-dim);font-size:13px;transition:all .15s;border-left:2px solid transparent}
+.nav-item:hover{color:var(--text);background:var(--surface2)}
+.nav-item.active{color:var(--accent);border-left-color:var(--accent);background:var(--surface2)}
+.nav-dot{width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
+.main{flex:1;padding:28px;overflow-x:auto}
+
+/* Sections */
+.sec-title{font-size:18px;font-weight:700;letter-spacing:-.03em;margin-bottom:2px}
+.sec-desc{font-size:12px;color:var(--text-dim);margin-bottom:20px}
+
+/* Cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;margin-bottom:14px}
+.card-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim);margin-bottom:12px}
+
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:20px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 18px}
+.kpi-label{font-size:11px;color:var(--text-dim);margin-bottom:2px}
+.kpi-value{font-size:26px;font-weight:700;letter-spacing:-.04em;font-family:var(--mono)}
+.kpi-sub{font-size:11px;color:var(--text-dimmer);margin-top:1px}
+.c1{color:var(--accent)} .c2{color:var(--accent2)} .c3{color:var(--accent3)} .c4{color:var(--accent4)}
+
+/* Table */
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{text-align:left;padding:7px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dimmer);border-bottom:1px solid var(--border)}
+.tbl td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:var(--surface2)}
+
+/* Badge */
+.badge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:11px;font-family:var(--mono);font-weight:500}
+.b-cli{background:rgba(124,111,255,.15);color:var(--accent)}
+.b-ide{background:rgba(67,217,162,.15);color:var(--accent3)}
+.b-ok{background:rgba(67,217,162,.15);color:var(--accent3)}
+.b-ng{background:rgba(255,107,107,.15);color:var(--accent2)}
+
+/* Stars */
+.stars-input{display:flex;gap:3px}
+.star{font-size:18px;cursor:pointer;color:var(--text-dimmer);transition:color .1s;user-select:none}
+.star.on{color:var(--accent4)}
+.star:hover{color:var(--accent4)}
+
+/* Progress bar */
+.pb-bg{background:var(--border);border-radius:4px;height:5px;overflow:hidden}
+.pb{height:100%;border-radius:4px;transition:width .5s ease}
+
+/* Ranking */
+.rank-list{display:flex;flex-direction:column;gap:7px}
+.rank-item{display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--surface2);border-radius:var(--r);border:1px solid var(--border);transition:border-color .15s}
+.rank-item:hover{border-color:var(--accent)}
+.rank-num{font-family:var(--mono);font-size:16px;font-weight:700;color:var(--text-dimmer);width:24px;flex-shrink:0}
+.gold{color:#ffd700} .silver{color:#c0c0c0} .bronze{color:#cd7f32}
+.rank-info{flex:1}
+.rank-name{font-weight:600;font-size:13px}
+.rank-type{font-size:11px;color:var(--text-dim);margin-top:1px}
+.rank-bar-w{width:120px}
+.rank-score{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--accent);width:44px;text-align:right}
+
+/* Tabs */
+.tabs{display:flex;gap:4px;margin-bottom:18px;flex-wrap:wrap}
+.tab{padding:5px 13px;border-radius:var(--r);border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;font-family:var(--sans)}
+.tab:hover{border-color:var(--accent);color:var(--accent)}
+.tab.active{background:var(--accent);border-color:var(--accent);color:#fff}
+
+/* Chart */
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.chart-wrap{position:relative;height:260px}
+.chart-wrap-r{position:relative;height:300px}
+
+/* Form */
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.input-subhead{font-size:11px;font-weight:600;color:var(--text-dimmer);text-transform:uppercase;letter-spacing:.05em;margin:18px 0 8px;padding-top:14px;border-top:1px solid var(--border)}
+.input-subhead:first-of-type{margin-top:0;padding-top:0;border-top:none}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-label{font-size:11px;color:var(--text-dim);font-weight:500}
+.form-input{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:7px 10px;color:var(--text);font-family:var(--sans);font-size:13px;transition:border-color .15s}
+.form-input:focus{outline:none;border-color:var(--accent)}
+.form-select{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:7px 10px;color:var(--text);font-family:var(--sans);font-size:13px;cursor:pointer}
+.form-select:focus{outline:none;border-color:var(--accent)}
+.form-textarea{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:7px 10px;color:var(--text);font-family:var(--sans);font-size:13px;resize:vertical;min-height:70px}
+.form-textarea:focus{outline:none;border-color:var(--accent)}
+.btn{padding:8px 16px;border-radius:var(--r);border:none;font-family:var(--sans);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:#6a5fe0}
+.btn-secondary{background:var(--surface2);border:1px solid var(--border);color:var(--text-dim)}
+.btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
+.btn-success{background:var(--accent3);color:#0d0f14}
+.btn-row{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--accent3);color:#0d0f14;padding:10px 18px;border-radius:var(--r);font-size:13px;font-weight:600;z-index:9999;transition:opacity .3s}
+
+/* Progress section */
+.prog-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.prog-item{padding:2px 0}
+.prog-label{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px}
+.prog-label span:first-child{color:var(--text-dim)}
+.prog-label span:last-child{font-family:var(--mono);font-weight:600}
+
+/* Gap analysis */
+.gap-pos{color:var(--accent2);font-family:var(--mono);font-weight:600}
+.gap-neg{color:var(--accent3);font-family:var(--mono);font-weight:600}
+.gap-zero{color:var(--text-dim);font-family:var(--mono)}
+
+/* Import area */
+.import-area{border:2px dashed var(--border);border-radius:var(--r);padding:28px;text-align:center;color:var(--text-dim);font-size:13px;cursor:pointer;transition:border-color .15s}
+.import-area:hover{border-color:var(--accent);color:var(--accent)}
+
+@media(max-width:900px){.chart-grid{grid-template-columns:1fr}.sidebar{display:none}.main{padding:16px}}
+</style>
+</head>
+<body>
+<div id="app">
+
+<header class="hdr">
+  <div class="hdr-left">
+    <span class="hdr-badge">EXPERIMENT</span>
+    <h1>AIエージェント比較実験 ダッシュボード</h1>
+  </div>
+  <div class="hdr-sub">タスク管理アプリ開発 / 2026</div>
+</header>
+
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sb-label">表示</div>
+    <div v-for="item in viewNav" :key="item.id" class="nav-item" :class="{active:view===item.id}" @click="view=item.id">
+      <span class="nav-dot"></span>{{ item.label }}
+    </div>
+    <div class="sb-sep"></div>
+    <div class="sb-label">入力・管理</div>
+    <div v-for="item in mgmtNav" :key="item.id" class="nav-item" :class="{active:view===item.id}" @click="view=item.id">
+      <span class="nav-dot"></span>{{ item.label }}
+    </div>
+  </nav>
+
+  <main class="main">
+
+    <!-- ① Overview -->
+    <section v-if="view==='overview'">
+      <div class="sec-title">総合ランキング</div>
+      <div class="sec-desc">全実験（A〜F）の総合スコアによる順位</div>
+      <div class="kpi-grid">
+        <div class="kpi"><div class="kpi-label">対象エージェント</div><div class="kpi-value c1">6</div><div class="kpi-sub">CLI 3本 / IDE 3本</div></div>
+        <div class="kpi"><div class="kpi-label">実験フェーズ</div><div class="kpi-value c3">6</div><div class="kpi-sub">A・B・C・D・E・F</div></div>
+        <div class="kpi"><div class="kpi-label">総実施回数</div><div class="kpi-value c4">90</div><div class="kpi-sub">実装・テスト・レビュー含む</div></div>
+        <div class="kpi"><div class="kpi-label">共通テスト数</div><div class="kpi-value c2">24</div><div class="kpi-sub">pytest 18本 / Playwright 6本</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">総合スコアランキング</div>
+        <div class="rank-list">
+          <div v-for="(ag,i) in rankedAgents" :key="ag.id" class="rank-item">
+            <div class="rank-num" :class="{gold:i===0,silver:i===1,bronze:i===2}">{{ i+1 }}</div>
+            <div class="rank-info">
+              <div class="rank-name">{{ ag.label }}</div>
+              <div class="rank-type"><span class="badge" :class="ag.type==='CLI'?'b-cli':'b-ide'">{{ ag.type }}</span>&nbsp;{{ ag.vendor }}</div>
+            </div>
+            <div class="rank-bar-w">
+              <div class="pb-bg"><div class="pb" :style="{width:ag.totalScore+'%',background:'var(--accent)'}"></div></div>
+            </div>
+            <div class="rank-score">{{ ag.totalScore||'—' }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">実験進捗</div>
+        <div class="prog-grid">
+          <div v-for="exp in expProgress" :key="exp.id" class="prog-item">
+            <div class="prog-label"><span>実験{{ exp.id }}: {{ exp.label }}</span><span>{{ exp.done }}/{{ exp.total }}</span></div>
+            <div class="pb-bg"><div class="pb" :style="{width:(exp.done/exp.total*100)+'%',background:exp.color}"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ② Exp A -->
+    <section v-if="view==='expA'">
+      <div class="sec-title">実験A：詳細仕様で実装</div>
+      <div class="sec-desc">仕様書を渡して実装させた結果の比較</div>
+      <div class="tabs">
+        <button v-for="t in ['定量','定性','テスト合格率']" :key="t" class="tab" :class="{active:tabA===t}" @click="tabA=t">{{ t }}</button>
+      </div>
+      <div v-if="tabA==='定量'" class="card">
+        <div class="card-title">定量データ一覧</div>
+        <table class="tbl">
+          <thead><tr><th>エージェント</th><th>種別</th><th>開発時間（人間）</th><th>処理時間（自己申告）</th><th>やり取り</th><th>BE行数</th><th>FE行数</th><th>起動エラー</th></tr></thead>
+          <tbody>
+            <tr v-for="ag in agents" :key="ag.id">
+              <td>{{ ag.label }}</td>
+              <td><span class="badge" :class="ag.type==='CLI'?'b-cli':'b-ide'">{{ ag.type }}</span></td>
+              <td>{{ fv(getExp(ag,'A','quantitative','dev_time_min'),'分') }}</td>
+              <td>{{ fv(getExp(ag,'A','quantitative','agent_reported_time_min'),'分') }}</td>
+              <td>{{ fv(getExp(ag,'A','quantitative','interaction_count'),'回') }}</td>
+              <td>{{ fv(getExp(ag,'A','quantitative','backend_lines'),'L') }}</td>
+              <td>{{ fv(getExp(ag,'A','quantitative','frontend_lines'),'L') }}</td>
+              <td>{{ fv(getExp(ag,'A','quantitative','startup_errors'),'件') }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="margin-top:8px;font-size:11px;color:var(--text-dimmer)">
+          開発時間: プロンプト送信〜人間が完了確認した時刻まで（待ち時間込み） / 処理時間: エージェント自己申告（純粋な処理時間）
+        </div>
+      </div>
+      <div v-if="tabA==='定性'" class="card">
+        <div class="card-title">定性評価（人間 / AI自己評価）</div>
+        <table class="tbl">
+          <thead><tr><th>エージェント</th><th>可読性</th><th>エラー処理</th><th>UI品質</th><th>ドキュメント</th><th>テスト網羅性</th><th>平均</th></tr></thead>
+          <tbody>
+            <tr v-for="ag in agents" :key="ag.id">
+              <td>{{ ag.label }}</td>
+              <td>{{ fq(getExp(ag,'A','qualitative','readability')) }}</td>
+              <td>{{ fq(getExp(ag,'A','qualitative','error_handling')) }}</td>
+              <td>{{ fq(getExp(ag,'A','qualitative','ui_quality')) }}</td>
+              <td>{{ fq(getExp(ag,'A','qualitative','documentation')) }}</td>
+              <td>{{ fq(getExp(ag,'A','qualitative','test_coverage')) }}</td>
+              <td><strong>{{ qualAvg(ag,'A') }}</strong></td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="margin-top:8px;font-size:11px;color:var(--text-dimmer)">表示形式: 人間 / AI自己評価（1〜5点）</div>
+      </div>
+      <div v-if="tabA==='テスト合格率'" class="card">
+        <div class="card-title">共通テスト結果</div>
+        <table class="tbl">
+          <thead><tr><th>エージェント</th><th>BE合格</th><th>FE合格</th><th>合計</th><th>合格率</th></tr></thead>
+          <tbody>
+            <tr v-for="ag in agents" :key="ag.id">
+              <td>{{ ag.label }}</td>
+              <td>{{ fv(getExp(ag,'A','quantitative','test_common_backend_pass')) }} / 18</td>
+              <td>{{ fv(getExp(ag,'A','quantitative','test_common_frontend_pass')) }} / 6</td>
+              <td>{{ sumPass(ag,'A') }} / 24</td>
+              <td>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <div style="width:80px"><div class="pb-bg"><div class="pb" :style="{width:passRate(ag,'A')+'%',background:passColor(passRate(ag,'A'))}"></div></div></div>
+                  <span style="font-family:var(--mono);font-size:13px">{{ passRate(ag,'A') }}%</span>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ③ Exp B -->
+    <section v-if="view==='expB'">
+      <div class="sec-title">実験B：最小仕様 + プランニング</div>
+      <div class="sec-desc">設計・デザインをAIに任せた場合の比較</div>
+      <div class="tabs">
+        <button v-for="t in ['プランニング','実装','自作テスト']" :key="t" class="tab" :class="{active:tabB===t}" @click="tabB=t">{{ t }}</button>
+      </div>
+      <div v-if="tabB==='プランニング'" class="card">
+        <div class="card-title">プランニング評価</div>
+        <table class="tbl">
+          <thead><tr><th>エージェント</th><th>機能選定</th><th>データモデル</th><th>UI方針</th><th>開発手順</th><th>テスト方針</th><th>時間</th><th>機能数</th></tr></thead>
+          <tbody>
+            <tr v-for="ag in agents" :key="ag.id">
+              <td>{{ ag.label }}</td>
+              <td>{{ fq(getExpPlanning(ag,'feature_selection')) }}</td>
+              <td>{{ fq(getExpPlanning(ag,'data_model_design')) }}</td>
+              <td>{{ fq(getExpPlanning(ag,'ui_design_clarity')) }}</td>
+              <td>{{ fq(getExpPlanning(ag,'dev_order_logic')) }}</td>
+              <td>{{ fq(getExpPlanning(ag,'test_plan_coverage')) }}</td>
+              <td>{{ fv(getExpPlanningQ(ag,'planning_time_min'),'分') }}</td>
+              <td>{{ fv(getExpPlanningQ(ag,'feature_count'),'個') }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div v-if="tabB==='実装'" class="card">
+        <div class="card-title">実装結果</div>
+        <table class="tbl">
+          <thead><tr><th>エージェント</th><th>開発時間（人間）</th><th>処理時間（自己申告）</th><th>やり取り</th><th>共通テスト合格率</th><th>計画一致率</th></tr></thead>
+          <tbody>
+            <tr v-for="ag in agents" :key="ag.id">
+              <td>{{ ag.label }}</td>
+              <td>{{ fv(getExp(ag,'B','quantitative','dev_time_min'),'分') }}</td>
+              <td>{{ fv(getExp(ag,'B','quantitative','agent_reported_time_min'),'分') }}</td>
+              <td>{{ fv(getExp(ag,'B','quantitative','interaction_count'),'回') }}</td>
+              <td>{{ passRate(ag,'B') }}%</td>
+              <td>{{ fv(getExpPlanningQ(ag,'plan_impl_match_pct'),'%') }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div v-if="tabB==='実装'" class="card">
+        <div class="card-title">トークン使用量</div>
+        <div class="chart-wrap"><canvas ref="chartTokensB"></canvas></div>
+        <table class="tbl" style="margin-top:14px">
+          <thead><tr><th>エージェント</th><th>入力トークン</th><th>出力トークン</th><th>合計</th></tr></thead>
+          <tbody>
+            <tr v-for="ag in agents" :key="ag.id">
+              <td>{{ ag.label }}</td>
+              <td>{{ fv(getExp(ag,'B','quantitative','input_tokens')) }}</td>
+              <td>{{ fv(getExp(ag,'B','quantitative','output_tokens')) }}</td>
+              <td>{{ tokenSum(ag,'B') }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div v-if="tabB==='自作テスト'" class="card">
+        <div class="card-title">AI自作テスト評価</div>
+        <table class="tbl">
+          <thead><tr><th>エージェント</th><th>BE本数</th><th>FE本数</th><th>合格率</th><th>FE対応</th></tr></thead>
+          <tbody>
+            <tr v-for="ag in agents" :key="ag.id">
+              <td>{{ ag.label }}</td>
+              <td>{{ fv(getExp(ag,'B','quantitative','test_self_backend_count'),'本') }}</td>
+              <td>{{ fv(getExp(ag,'B','quantitative','test_self_frontend_count'),'本') }}</td>
+              <td>{{ selfTestRate(ag) }}</td>
+              <td>
+                <span v-if="getExp(ag,'B','quantitative','test_self_frontend_count')>0" class="badge b-ok">✓ 対応</span>
+                <span v-else-if="getExp(ag,'B','quantitative','test_self_frontend_count')===0" class="badge b-ng">✗ 未対応</span>
+                <span v-else style="color:var(--text-dimmer)">—</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ④ Experiment D: Test Adaptation -->
+    <section v-if="view==='expD'">
+      <div class="sec-title">実験D: 他者テスト修正</div>
+      <div class="sec-desc">各エージェントに自分以外の5エージェントが実装したtask-app（実験A成果物）を渡し、共通テスト原本（test_api.py 18本・test_ui.py 6本）をその実装に合わせて修正させた。テストの観点・期待HTTPステータスコード・本数の変更は禁止というルールの下、6エージェント×5本＝計30セッションを実施。合格率はClaudeによるサンドボックスでの実機検証（実際にサーバーを起動してpytest実行）で確認した値。</div>
+
+      <!-- Panel 1: 修正者別ランキング -->
+      <div class="card">
+        <div class="card-title">パネル1: 修正者別 合格率ランキング</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-bottom:12px">
+          見かけの合格率が高いほど優秀とは限らない点に注意。指示違反（期待値や観点の書き換え）によって
+          合格率を不当に高めているケースがあるため、「違反」列も併せて確認すること。
+        </div>
+        <table class="tbl">
+          <thead>
+            <tr><th>順位</th><th>エージェント</th><th>合格率</th><th>合格/全体</th><th>指示違反</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="(row, idx) in expDRanking" :key="row.id">
+              <td>{{ idx + 1 }}</td>
+              <td>{{ agentLabel(row.id) }}</td>
+              <td :style="{color: row.violations > 0 ? 'var(--accent2)' : 'var(--accent3)'}">{{ row.passRate }}%</td>
+              <td>{{ row.totalPass }} / {{ row.totalTotal }}</td>
+              <td>
+                <span v-if="row.violations > 0" class="badge b-ng">{{ row.violations }}件あり</span>
+                <span v-else class="badge b-ok">違反なし</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="margin-top:8px;font-size:11px;color:var(--text-dimmer)">
+          指示違反＝期待するHTTPステータスコードやソート順の期待値、レスポンスオブジェクトを書き換えて
+          実装側の不具合を覆い隠し、本来失敗すべきテストを通過させた行為。
+        </div>
+      </div>
+
+      <!-- Panel 2: マトリクス -->
+      <div class="card">
+        <div class="card-title">パネル2: 修正者×対象targetマトリクス（合格数 api+ui）</div>
+        <table class="tbl matrix-tbl">
+          <thead>
+            <tr>
+              <th>修正者 ↓ ／ 対象target →</th>
+              <th v-for="ag in agents" :key="'dh-'+ag.id">{{ ag.shortLabel }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="modifier in agents" :key="'dm-'+modifier.id">
+              <td style="font-weight:600">{{ modifier.label }}</td>
+              <td v-for="target in agents" :key="modifier.id+'-d-'+target.id"
+                  :style="expDCellStyle(modifier.id, target.id)">
+                <template v-if="modifier.id === target.id">
+                  <span style="color:var(--text-dimmer)">―</span>
+                </template>
+                <template v-else-if="!expDSession(modifier.id, target.id)">
+                  <span style="color:var(--text-dimmer)">-</span>
+                </template>
+                <template v-else>
+                  {{ expDSession(modifier.id, target.id).api_pass + expDSession(modifier.id, target.id).ui_pass }}/24
+                  <span v-if="expDSession(modifier.id, target.id).violation" title="指示違反あり">⚠</span>
+                </template>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="margin-top:8px;font-size:11px;color:var(--text-dimmer)">
+          行＝修正者（テストを書いたエージェント）、列＝対象target（コードの作者）。「―」は自分自身（対象外）。
+          ⚠は指示違反（期待値の書き換え）があったセル。
+        </div>
+      </div>
+
+      <!-- Panel 3: 指示違反の詳細 -->
+      <div class="card">
+        <div class="card-title">パネル3: 指示違反の詳細（期待値・観点の書き換え）</div>
+        <table class="tbl">
+          <thead>
+            <tr><th>修正者</th><th>対象target</th><th>内容</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="s in expDViolations" :key="s.modifier+'-'+s.target">
+              <td>{{ agentLabel(s.modifier) }}</td>
+              <td>{{ agentLabel(s.target_author) }}</td>
+              <td style="font-size:12px;color:var(--text-dim)">{{ s.note }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Panel 4: テスト品質の構造的欠陥 -->
+      <div class="card">
+        <div class="card-title">パネル4: テスト品質の構造的な弱さ（v-modelセレクタ問題）</div>
+        <div style="font-size:12px;color:var(--text-dim);line-height:1.7">
+          Antigravity CLIとCodex IDEは、Vue 3がマウント後にDOMへ<code>v-model</code>属性を出力しない仕様を
+          見落とし、<code>select[v-model='...']</code>という属性セレクタを採用した。このセレクタは
+          原理的に一致せず、フィルタ操作・タイトル入力操作が実行されないまま進行する。
+          Antigravity CLIは<code>try/except</code>で例外を握りつぶしていたため、初回実行では
+          偶然「合格」に見えるケースがあり、再実行して再現性を確認したことで判明した
+          （サイレントな偽陽性）。Codex IDEは例外を握りつぶさず、タイムアウトとして明示的に
+          失敗したため、Antigravity CLIより発見しやすい設計だった。
+        </div>
+      </div>
+
+      <!-- Panel 5: 全セッション詳細 -->
+      <div class="card">
+        <div class="card-title">パネル5: 全30セッションの詳細</div>
+        <table class="tbl">
+          <thead>
+            <tr><th>修正者</th><th>対象target</th><th>API(18本)</th><th>UI(6本)</th><th>備考</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="s in expDData.sessions" :key="s.modifier+'-'+s.target">
+              <td>{{ agentLabel(s.modifier) }}</td>
+              <td>{{ agentLabel(s.target_author) }}</td>
+              <td :style="{color: s.api_pass < s.api_total ? 'var(--accent4)' : 'var(--accent3)'}">{{ s.api_pass }}/{{ s.api_total }}</td>
+              <td :style="{color: s.ui_pass < s.ui_total ? 'var(--accent4)' : 'var(--accent3)'}">{{ s.ui_pass }}/{{ s.ui_total }}</td>
+              <td style="font-size:11px;color:var(--text-dimmer)">
+                {{ s.note }}
+                <span v-if="s.violation" class="badge b-ng" style="margin-left:6px">違反</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ④ Experiment E: Cross Review -->
+    <section v-if="view==='expE'">
+      <div class="sec-title">実験E: 相互コードレビュー</div>
+      <div class="sec-desc">各エージェントが自分以外の5本をレビュー（作成者名は伏せて実施）。実験A（詳細仕様）・実験B（最小仕様）それぞれ30件、計60件のレビューを実施。</div>
+
+      <!-- Panel 1: レビュアー×被レビューのマトリクス -->
+      <div class="card">
+        <div class="card-title">パネル1: 評価マトリクス（誰が誰に何点つけたか）</div>
+        <div class="tabs" style="margin-bottom:10px">
+          <button class="tab" :class="{active:expEExp==='A'}" @click="expEExp='A'">実験A: 詳細仕様</button>
+          <button class="tab" :class="{active:expEExp==='B'}" @click="expEExp='B'">実験B: 最小仕様</button>
+        </div>
+        <table class="tbl matrix-tbl">
+          <thead>
+            <tr>
+              <th>レビュアー ↓ ／ 被レビュー →</th>
+              <th v-for="ag in agents" :key="'h-'+ag.id">{{ ag.shortLabel }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="reviewer in agents" :key="'r-'+reviewer.id">
+              <td style="font-weight:600">{{ reviewer.label }}</td>
+              <td v-for="target in agents" :key="reviewer.id+'-'+target.id"
+                  :style="matrixCellStyle(reviewer.id, target.id)">
+                <template v-if="reviewer.id === target.id">
+                  <span style="color:var(--text-dimmer)">―</span>
+                </template>
+                <template v-else>
+                  {{ matrixScore(reviewer.id, target.id) }}
+                </template>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="margin-top:8px;font-size:11px;color:var(--text-dimmer)">
+          行＝レビュアー、列＝被レビュー対象。「―」は自分自身（評価対象外）。色が濃いほど高評価。
+        </div>
+      </div>
+
+      <!-- Panel 2: 被レビュー側の平均評価（グラフ） -->
+      <div class="card">
+        <div class="card-title">パネル2: 被レビュー側の平均評価（実験A vs B）</div>
+        <div style="height:280px;position:relative">
+          <canvas id="expEAvgChart"></canvas>
+        </div>
+        <table class="tbl" style="margin-top:14px">
+          <thead>
+            <tr><th>エージェント</th><th>実験A平均</th><th>実験B平均</th><th>差分</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="ag in agents" :key="ag.id">
+              <td>{{ ag.label }}</td>
+              <td>{{ expEAvgA(ag) }}</td>
+              <td>{{ expEAvgB(ag) }}</td>
+              <td :style="{color: expEAvgDiffColor(ag)}">{{ expEAvgDiff(ag) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Panel 3: 均質化トラップ分析 -->
+      <div class="card">
+        <div class="card-title">パネル3: 均質化トラップ分析（同系統 vs 異系統の評価差）</div>
+        <div style="font-size:12px;color:var(--text-dim);line-height:1.7;margin-bottom:14px">
+          「均質化トラップ」とは、レビュアーが自分と同じベンダー（同じエンジン由来）の
+          成果物を、他ベンダーより甘く評価してしまう現象のこと。<br>
+          6エージェント中、同じベンダーのペアが組めるのは
+          <strong>Google系（Antigravity CLI ⇔ Antigravity IDE）</strong>と
+          <strong>OpenAI系（Codex CLI ⇔ Codex IDE）</strong>の2組だけ。
+          Claude CodeとCopilot Agentには対になる同ベンダーの相手がいないため、
+          このペア分析の対象外（評価データ自体は他のパネルに含まれる）。
+        </div>
+        <div style="height:240px;position:relative;margin-bottom:16px">
+          <canvas id="expEGapChart"></canvas>
+        </div>
+        <table class="tbl">
+          <thead>
+            <tr><th>ベンダー</th><th>被レビュー</th><th>同系統レビュアー</th><th>実験</th><th>同系統評価</th><th>異系統平均</th><th>差（gap）</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in homogenizationRows" :key="row.key">
+              <td>{{ row.vendor }}</td>
+              <td>{{ agentLabel(row.target) }}</td>
+              <td>{{ agentLabel(row.reviewer) }}</td>
+              <td>{{ row.expLabel }}</td>
+              <td>{{ row.sameScore }}</td>
+              <td>{{ row.otherAvg }}</td>
+              <td :style="{color: row.gap > 1 ? 'var(--accent2)' : (row.gap < -1 ? 'var(--accent3)' : 'var(--text-dim)')}">
+                {{ row.gap > 0 ? '+' : '' }}{{ row.gap }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="card" style="margin-top:14px;background:var(--bg-2)">
+          <div class="card-title" style="font-size:13px">考察</div>
+          <div style="font-size:12px;color:var(--text-dim);line-height:1.7">
+            {{ expEData.homogenization_trap_analysis.conclusion }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel 4: バグ検出力ランキング -->
+      <div class="card">
+        <div class="card-title">パネル4: バグ検出力ランキング（横断的発見への貢献数）</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-bottom:12px">
+          複数のtargetで共通して見つかった重要な問題（cross-cutting findings、計{{ expEData.cross_cutting_findings.length }}件）を、
+          各エージェントがどれだけ独自に検出できたかの集計。
+        </div>
+        <div style="height:220px;position:relative;margin-bottom:14px">
+          <canvas id="expEDetectChart"></canvas>
+        </div>
+        <table class="tbl">
+          <thead><tr><th>順位</th><th>エージェント</th><th>検出件数</th></tr></thead>
+          <tbody>
+            <tr v-for="(row, idx) in detectionRanking" :key="row.id">
+              <td>{{ idx + 1 }}</td>
+              <td>{{ agentLabel(row.id) }}</td>
+              <td>{{ row.count }} / {{ expEData.cross_cutting_findings.length }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="margin-top:8px;font-size:11px;color:var(--text-dimmer)">
+          {{ expEData.detection_stats.note }}
+        </div>
+      </div>
+
+      <!-- Panel 5: 横断的に発見されたバグ一覧 -->
+      <div class="card">
+        <div class="card-title">パネル5: 横断的に発見されたバグ・問題の詳細</div>
+        <table class="tbl">
+          <thead>
+            <tr><th>実験</th><th>重大度</th><th>問題</th><th>影響target数</th><th>検出者数</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="f in expEData.cross_cutting_findings" :key="f.id">
+              <td>{{ f.experiment }}</td>
+              <td>
+                <span class="badge" :class="severityBadgeClass(f.severity)">{{ severityLabel(f.severity) }}</span>
+              </td>
+              <td>{{ f.issue }}</td>
+              <td>{{ f.affected_targets.length }} / 6</td>
+              <td>{{ f.detected_by.length }} / 5</td>
+            </tr>
+          </tbody>
+        </table>
+        <div v-for="f in expEData.cross_cutting_findings" :key="'detail-'+f.id" class="card" style="margin-top:10px;background:var(--bg-2)">
+          <div style="font-size:12px;color:var(--text-dim);line-height:1.7">
+            <strong>{{ f.issue }}</strong>（実験{{ f.experiment }}）<br>
+            {{ f.description }}<br>
+            <span style="color:var(--text-dimmer)">
+              影響: {{ f.affected_targets.map(agentLabel).join('、') }} ／
+              検出: {{ f.detected_by.map(agentLabel).join('、') }}
+              <template v-if="f.note"> ／ 注記: {{ f.note }}</template>
+            </span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ⑤ Self vs Human -->
+    <section v-if="view==='gap'">
+      <div class="sec-title">自己評価 vs 人間評価</div>
+      <div class="sec-desc">AIが自分をどう評価するか——過大・過小評価のパターン分析</div>
+      <div class="card">
+        <div class="card-title">実験A ギャップ分析（正 = 過大評価 / 負 = 過小評価）</div>
+        <table class="tbl">
+          <thead><tr><th>エージェント</th><th>人間平均</th><th>AI自己平均</th><th>ギャップ</th><th>傾向</th></tr></thead>
+          <tbody>
+            <tr v-for="ag in agents" :key="ag.id">
+              <td>{{ ag.label }}</td>
+              <td>{{ humanAvg(ag,'A') }}</td>
+              <td>{{ selfAvg(ag,'A') }}</td>
+              <td><span :class="gapClass(ag,'A')">{{ gapVal(ag,'A') }}</span></td>
+              <td style="color:var(--text-dim);font-size:12px">{{ gapLabel(ag,'A') }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ⑤ Data Input -->
+    <section v-if="view==='inputA'">
+      <div class="sec-title">データ入力A（実験A: 詳細仕様）</div>
+      <div class="sec-desc">実験結果をここから入力してください（人間専用）。共通テストは全エージェント共通でBE18本・FE6本固定です。</div>
+
+      <div class="card">
+        <div class="card-title">対象を選択</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">エージェント</label>
+            <select class="form-select" v-model="inputAgent">
+              <option v-for="ag in agents" :key="ag.id" :value="ag.id">{{ ag.label }}</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- 定量入力 -->
+      <div class="card">
+        <div class="card-title">定量データ</div>
+
+        <div class="input-subhead">時間・効率</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">開発時間（分・人間計測）</label>
+            <input class="form-input" type="number" v-model.number="inputData.dev_time_min" placeholder="例: 45">
+          </div>
+          <div class="form-group">
+            <label class="form-label">処理時間（分・エージェント報告）</label>
+            <input class="form-input" type="number" v-model.number="inputData.agent_reported_time_min" placeholder="例: 18">
+          </div>
+          <div class="form-group">
+            <label class="form-label">やり取り回数</label>
+            <input class="form-input" type="number" v-model.number="inputData.interaction_count" placeholder="例: 12">
+          </div>
+        </div>
+
+        <div class="input-subhead">コスト</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">入力トークン数</label>
+            <input class="form-input" type="number" v-model.number="inputData.input_tokens" placeholder="例: 45000">
+          </div>
+          <div class="form-group">
+            <label class="form-label">出力トークン数</label>
+            <input class="form-input" type="number" v-model.number="inputData.output_tokens" placeholder="例: 12000">
+          </div>
+        </div>
+
+        <div class="input-subhead">コード規模</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">バックエンド行数</label>
+            <input class="form-input" type="number" v-model.number="inputData.backend_lines" placeholder="例: 350">
+          </div>
+          <div class="form-group">
+            <label class="form-label">フロントエンド行数</label>
+            <input class="form-input" type="number" v-model.number="inputData.frontend_lines" placeholder="例: 280">
+          </div>
+        </div>
+
+        <div class="input-subhead">品質（共通テストは全エージェントBE18本・FE6本固定）</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">起動エラー回数</label>
+            <input class="form-input" type="number" v-model.number="inputData.startup_errors" placeholder="例: 2">
+          </div>
+          <div class="form-group">
+            <label class="form-label">共通テスト合格（BE / 18本）</label>
+            <input class="form-input" type="number" v-model.number="inputData.test_common_backend_pass" placeholder="例: 16" max="18" min="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">共通テスト合格（FE / 6本）</label>
+            <input class="form-input" type="number" v-model.number="inputData.test_common_frontend_pass" placeholder="例: 5" max="6" min="0">
+          </div>
+        </div>
+      </div>
+
+      <!-- 定性入力 -->
+      <div class="card">
+        <div class="card-title">定性評価（人間評価）</div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div v-for="item in qualItems" :key="item.key" style="display:flex;align-items:center;gap:16px">
+            <div style="width:140px;font-size:13px;color:var(--text-dim)">{{ item.label }}</div>
+            <div class="stars-input">
+              <span v-for="n in 5" :key="n" class="star" :class="{on:inputQual[item.key]>=n}" @click="inputQual[item.key]=n">★</span>
+            </div>
+            <div style="font-family:var(--mono);font-size:13px;color:var(--accent4);width:20px">{{ inputQual[item.key]||'—' }}</div>
+            <div style="font-size:11px;color:var(--text-dimmer)">{{ qualDesc[inputQual[item.key]] }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- メモ -->
+      <div class="card">
+        <div class="card-title">メモ・コメント</div>
+        <textarea class="form-textarea" v-model="inputNote" placeholder="気づいた点・特記事項を入力してください"></textarea>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" @click="saveInput('A')">💾 保存</button>
+        <button class="btn btn-secondary" @click="clearInput">クリア</button>
+      </div>
+    </section>
+
+    <section v-if="view==='inputB'">
+      <div class="sec-title">データ入力B（実験B: 最小仕様）</div>
+      <div class="sec-desc">実験結果をここから入力してください（人間専用）。共通テストの総数はエージェントのグループにより異なります。</div>
+
+      <div class="card">
+        <div class="card-title">対象を選択</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">エージェント</label>
+            <select class="form-select" v-model="inputAgent">
+              <option v-for="ag in agents" :key="ag.id" :value="ag.id">{{ ag.label }}</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">データモデルのグループ（自動判定）</label>
+            <input class="form-input" type="text" :value="expBGroupLabel" readonly style="opacity:0.7">
+          </div>
+        </div>
+      </div>
+
+      <!-- 定量入力 -->
+      <div class="card">
+        <div class="card-title">定量データ</div>
+
+        <div class="input-subhead">時間・効率</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">開発時間（分・人間計測）</label>
+            <input class="form-input" type="number" v-model.number="inputData.dev_time_min" placeholder="例: 45">
+          </div>
+          <div class="form-group">
+            <label class="form-label">処理時間（分・エージェント報告）</label>
+            <input class="form-input" type="number" v-model.number="inputData.agent_reported_time_min" placeholder="例: 18">
+          </div>
+          <div class="form-group">
+            <label class="form-label">やり取り回数</label>
+            <input class="form-input" type="number" v-model.number="inputData.interaction_count" placeholder="例: 12">
+          </div>
+        </div>
+
+        <div class="input-subhead">コスト</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">入力トークン数</label>
+            <input class="form-input" type="number" v-model.number="inputData.input_tokens" placeholder="例: 45000">
+          </div>
+          <div class="form-group">
+            <label class="form-label">出力トークン数</label>
+            <input class="form-input" type="number" v-model.number="inputData.output_tokens" placeholder="例: 12000">
+          </div>
+        </div>
+
+        <div class="input-subhead">コード規模</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">バックエンド行数</label>
+            <input class="form-input" type="number" v-model.number="inputData.backend_lines" placeholder="例: 350">
+          </div>
+          <div class="form-group">
+            <label class="form-label">フロントエンド行数</label>
+            <input class="form-input" type="number" v-model.number="inputData.frontend_lines" placeholder="例: 280">
+          </div>
+        </div>
+
+        <div class="input-subhead">品質（共通テスト・グループ選択で総数を自動入力）</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">起動エラー回数</label>
+            <input class="form-input" type="number" v-model.number="inputData.startup_errors" placeholder="例: 2">
+          </div>
+          <div class="form-group">
+            <label class="form-label">共通テスト合格（BE）</label>
+            <input class="form-input" type="number" v-model.number="inputData.test_common_backend_pass" placeholder="例: 13">
+          </div>
+          <div class="form-group">
+            <label class="form-label">共通テスト総数（BE）<span style="color:var(--text-dimmer)">※自動入力・上書き可</span></label>
+            <input class="form-input" type="number" v-model.number="inputData.test_common_backend_total" placeholder="グループにより自動設定">
+          </div>
+          <div class="form-group">
+            <label class="form-label">共通テスト合格（FE）</label>
+            <input class="form-input" type="number" v-model.number="inputData.test_common_frontend_pass" placeholder="未実施なら空欄">
+          </div>
+          <div class="form-group">
+            <label class="form-label">共通テスト総数（FE）</label>
+            <input class="form-input" type="number" v-model.number="inputData.test_common_frontend_total" placeholder="未実施なら空欄">
+          </div>
+        </div>
+
+        <div class="input-subhead">自作テスト</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">自作テストBE本数</label>
+            <input class="form-input" type="number" v-model.number="inputData.test_self_backend_count" placeholder="例: 19">
+          </div>
+          <div class="form-group">
+            <label class="form-label">自作テストFE本数</label>
+            <input class="form-input" type="number" v-model.number="inputData.test_self_frontend_count" placeholder="例: 0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">自作テスト合格</label>
+            <input class="form-input" type="number" v-model.number="inputData.test_self_pass" placeholder="例: 19">
+          </div>
+          <div class="form-group">
+            <label class="form-label">自作テスト総数</label>
+            <input class="form-input" type="number" v-model.number="inputData.test_self_total" placeholder="例: 19">
+          </div>
+        </div>
+      </div>
+
+      <!-- 定性入力 -->
+      <div class="card">
+        <div class="card-title">定性評価（人間評価）</div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div v-for="item in qualItems" :key="item.key" style="display:flex;align-items:center;gap:16px">
+            <div style="width:140px;font-size:13px;color:var(--text-dim)">{{ item.label }}</div>
+            <div class="stars-input">
+              <span v-for="n in 5" :key="n" class="star" :class="{on:inputQual[item.key]>=n}" @click="inputQual[item.key]=n">★</span>
+            </div>
+            <div style="font-family:var(--mono);font-size:13px;color:var(--accent4);width:20px">{{ inputQual[item.key]||'—' }}</div>
+            <div style="font-size:11px;color:var(--text-dimmer)">{{ qualDesc[inputQual[item.key]] }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- メモ -->
+      <div class="card">
+        <div class="card-title">メモ・コメント</div>
+        <textarea class="form-textarea" v-model="inputNote" placeholder="気づいた点・特記事項を入力してください"></textarea>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" @click="saveInput('B')">💾 保存</button>
+        <button class="btn btn-secondary" @click="clearInput">クリア</button>
+      </div>
+    </section>
+
+    <!-- ⑥ Data Management -->
+    <section v-if="view==='mgmt'">
+      <div class="sec-title">データ管理</div>
+      <div class="sec-desc">JSONのエクスポート・インポートを行います</div>
+
+      <!-- Export -->
+      <div class="card">
+        <div class="card-title">エクスポート（JSONダウンロード）</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div v-for="ag in agents" :key="ag.id" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--surface2);border-radius:var(--r);border:1px solid var(--border)">
+            <div>
+              <span style="font-weight:500;font-size:13px">{{ ag.label }}</span>
+              <span class="badge" :class="ag.type==='CLI'?'b-cli':'b-ide'" style="margin-left:8px">{{ ag.type }}</span>
+            </div>
+            <button class="btn btn-secondary" @click="exportJson(ag.id)">📥 ダウンロード</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Import -->
+      <div class="card">
+        <div class="card-title">インポート（AIが編集したJSONを取り込む）</div>
+        <div class="import-area" @click="triggerImport" @dragover.prevent @drop.prevent="handleDrop">
+          <div style="font-size:24px;margin-bottom:8px">📂</div>
+          <div>クリックまたはドラッグ&ドロップでJSONファイルを選択</div>
+          <div style="font-size:11px;margin-top:4px;color:var(--text-dimmer)">ai_selfフィールドのみ取り込まれます（humanフィールドは保護されます）</div>
+        </div>
+        <input type="file" ref="fileInput" accept=".json" style="display:none" @change="handleFileImport">
+      </div>
+
+      <!-- Reset -->
+      <div class="card">
+        <div class="card-title">データリセット</div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <select class="form-select" v-model="resetAgent" style="width:200px">
+            <option value="">エージェントを選択</option>
+            <option v-for="ag in agents" :key="ag.id" :value="ag.id">{{ ag.label }}</option>
+          </select>
+          <button class="btn btn-secondary" @click="resetData" :disabled="!resetAgent">🗑 リセット</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Toast -->
+<div v-if="toast.show" class="toast" :style="{opacity:toast.show?1:0}">{{ toast.msg }}</div>
+
+</div>
+
+<script>
+const {createApp,ref,computed,onMounted,watch,nextTick} = Vue;
+
+const AGENTS = [
+  {id:'claude-code',     label:'Claude Code',     shortLabel:'Claude',   type:'CLI',vendor:'Anthropic'},
+  {id:'codex-cli',       label:'Codex CLI',        shortLabel:'Codex CLI',type:'CLI',vendor:'OpenAI'},
+  {id:'antigravity-cli', label:'Antigravity CLI',  shortLabel:'AGV CLI',  type:'CLI',vendor:'Google'},
+  {id:'codex-ide',       label:'Codex IDE',        shortLabel:'Codex IDE',type:'IDE',vendor:'OpenAI'},
+  {id:'antigravity-ide', label:'Antigravity IDE',  shortLabel:'AGV IDE',  type:'IDE',vendor:'Google'},
+  {id:'copilot-agent',   label:'Copilot Agent',    shortLabel:'Copilot',  type:'IDE',vendor:'Microsoft'},
+];
+
+const STORAGE_KEY = 'ai-exp-data-v1';
+
+// 実験D（他者テスト修正）の確定データ
+// データソース: Claudeによるサンドボックス実機検証（30セッション全件）
+const EXP_D_DATA = {"meta": {"description": "実験D（他者テスト修正） 評価データ", "target_correspondence_note": "target番号と実際のエージェント名の対応は target-correspondence.md（非公開）で管理。このJSON内のキーは実際のエージェント名で記録する。", "rule_summary": "各エージェントに、自分以外の5エージェントが実装したtask-app（target）を渡し、共通テスト原本（test_api.py 18本・test_ui.py 6本）をそのtargetの実装に合わせて修正させた。テストの観点・期待HTTPステータスコード・本数の変更は禁止。"}, "vendor_map": {"claude-code": "Anthropic", "codex-cli": "OpenAI", "codex-ide": "OpenAI", "antigravity-cli": "Google", "antigravity-ide": "Google", "copilot-agent": "Microsoft"}, "sessions": [{"modifier": "claude-code", "target": "target-2", "target_author": "codex-cli", "api_pass": 18, "api_total": 18, "ui_pass": 6, "ui_total": 6, "violation": false, "note": ""}, {"modifier": "claude-code", "target": "target-3", "target_author": "antigravity-cli", "api_pass": 18, "api_total": 18, "ui_pass": 6, "ui_total": 6, "violation": false, "note": ""}, {"modifier": "claude-code", "target": "target-4", "target_author": "codex-ide", "api_pass": 18, "api_total": 18, "ui_pass": 6, "ui_total": 6, "violation": false, "note": ""}, {"modifier": "claude-code", "target": "target-5", "target_author": "antigravity-ide", "api_pass": 18, "api_total": 18, "ui_pass": 5, "ui_total": 6, "violation": false, "note": "「更新」ボタン名衝突によりtest_02が失敗（保存ボタンと一覧再読み込みボタンが同名のため誤クリック）"}, {"modifier": "claude-code", "target": "target-6", "target_author": "copilot-agent", "api_pass": 16, "api_total": 18, "ui_pass": 6, "ui_total": 6, "violation": false, "note": "DELETE 200返却・priorityランク逆転を原本維持で正しく検出（実装差異の正当な検出）"}, {"modifier": "codex-cli", "target": "target-1", "target_author": "claude-code", "api_pass": 18, "api_total": 18, "ui_pass": 6, "ui_total": 6, "violation": false, "note": ""}, {"modifier": "codex-cli", "target": "target-3", "target_author": "antigravity-cli", "api_pass": 18, "api_total": 18, "ui_pass": 6, "ui_total": 6, "violation": false, "note": ""}, {"modifier": "codex-cli", "target": "target-4", "target_author": "codex-ide", "api_pass": 18, "api_total": 18, "ui_pass": 6, "ui_total": 6, "violation": false, "note": ""}, {"modifier": "codex-cli", "target": "target-5", "target_author": "antigravity-ide", "api_pass": 18, "api_total": 18, "ui_pass": 6, "ui_total": 6, "violation": false, "note": "「更新」ボタン名衝突をフォーム内限定セレクタで回避し全合格"}, {"modifier": "codex-cli", "target": "target-6", "target_author": "copilot-agent", "api_pass": 18, "api_total": 18, "ui_pass": 6, "ui_total": 6, "violation": true, "note": "DELETE期待値を204→200、priority順序をdesc→ascに書き換えて合格させた（指示違反）"}, {"modifier": "antigravity-cli", "target": "target-1", "target_author": "claude-code", "api_pass": 17, "api_total": 18, "ui_pass": 5, "ui_total": 6, "violation": false, "note": "DELETE 200の実装差異を新発見（target-1は実験Aで未発見だった見落とし）。UIはv-model属性セレクタの不一致でtest_04失敗"}, {"modifier": "antigravity-cli", "target": "target-2", "target_author": "codex-cli", "api_pass": 18, "api_total": 18, "ui_pass": 4, "ui_total": 6, "violation": false, "note": "v-model属性セレクタがVue3で機能せず、フィルタ操作が無効化されたまま実行（再実行で発覚、初回は偶然合格に見えた）"}, {"modifier": "antigravity-cli", "target": "target-4", "target_author": "codex-ide", "api_pass": 18, "api_total": 18, "ui_pass": 5, "ui_total": 6, "violation": false, "note": "v-model問題でtest_04失敗"}, {"modifier": "antigravity-cli", "target": "target-5", "target_author": "antigravity-ide", "api_pass": 18, "api_total": 18, "ui_pass": 3, "ui_total": 6, "violation": false, "note": "v-model問題に加えタイトル入力欄セレクタも影響し3件失敗（再実行で発覚）"}, {"modifier": "antigravity-cli", "target": "target-6", "target_author": "copilot-agent", "api_pass": 16, "api_total": 18, "ui_pass": 5, "ui_total": 6, "violation": false, "note": "DELETE 200・priority逆転を正しく検出。UIはv-model問題でtest_04失敗"}, {"modifier": "codex-ide", "target": "target-1", "target_author": "claude-code", "api_pass": 17, "api_total": 18, "ui_pass": 5, "ui_total": 6, "violation": false, "note": "DELETE 200の既知問題を正しく検出。UIはv-model問題でtest_04失敗"}, {"modifier": "codex-ide", "target": "target-2", "target_author": "codex-cli", "api_pass": 18, "api_total": 18, "ui_pass": 5, "ui_total": 6, "violation": false, "note": "v-model問題でtest_04失敗（try/exceptで囲まずタイムアウトとして明示的に検出される設計）"}, {"modifier": "codex-ide", "target": "target-3", "target_author": "antigravity-cli", "api_pass": 18, "api_total": 18, "ui_pass": 4, "ui_total": 6, "violation": false, "note": "v-model問題に加えバリデーションエラー表示の検出も失敗（2件失敗）"}, {"modifier": "codex-ide", "target": "target-5", "target_author": "antigravity-ide", "api_pass": 18, "api_total": 18, "ui_pass": 2, "ui_total": 6, "violation": false, "note": "タイトル入力欄の実装(type/id属性無し)にセレクタが対応できず4件タイムアウト"}, {"modifier": "codex-ide", "target": "target-6", "target_author": "copilot-agent", "api_pass": 17, "api_total": 18, "ui_pass": 5, "ui_total": 6, "violation": true, "note": "priority順序をdesc→ascに書き換えて合格させた（DELETE 204期待は維持、指示違反）"}, {"modifier": "antigravity-ide", "target": "target-1", "target_author": "claude-code", "api_pass": 18, "api_total": 18, "ui_pass": 6, "ui_total": 6, "violation": true, "note": "DELETE期待値を実行時にresponse.status_code=204へ動的書き換え。アサーション文自体は204のままで偽装する最も巧妙な指示違反"}, {"modifier": "antigravity-ide", "target": "target-2", "target_author": "codex-cli", "api_pass": 18, "api_total": 18, "ui_pass": 6, "ui_total": 6, "violation": false, "note": ""}, {"modifier": "antigravity-ide", "target": "target-3", "target_author": "antigravity-cli", "api_pass": 18, "api_total": 18, "ui_pass": 6, "ui_total": 6, "violation": false, "note": "required属性をPlaywright側でremoveAttributeし正しく回避（実装コード自体は非変更）"}, {"modifier": "antigravity-ide", "target": "target-4", "target_author": "codex-ide", "api_pass": 18, "api_total": 18, "ui_pass": 6, "ui_total": 6, "violation": false, "note": ""}, {"modifier": "antigravity-ide", "target": "target-6", "target_author": "copilot-agent", "api_pass": 18, "api_total": 18, "ui_pass": 6, "ui_total": 6, "violation": true, "note": "DELETE期待値を実行時にresponse.status_code=204へ動的書き換え（指示違反）。UIは安定したクラスセレクタで全合格"}, {"modifier": "copilot-agent", "target": "target-1", "target_author": "claude-code", "api_pass": 17, "api_total": 18, "ui_pass": 6, "ui_total": 6, "violation": false, "note": "DELETE 200の既知問題を誠実に原本維持で検出。UIは「更新」ボタン名衝突なく全合格"}, {"modifier": "copilot-agent", "target": "target-2", "target_author": "codex-cli", "api_pass": 18, "api_total": 18, "ui_pass": 6, "ui_total": 6, "violation": false, "note": ""}, {"modifier": "copilot-agent", "target": "target-3", "target_author": "antigravity-cli", "api_pass": 18, "api_total": 18, "ui_pass": 6, "ui_total": 6, "violation": false, "note": "required属性を:invalid疑似クラス併用で正しく検出（実装コード非変更）"}, {"modifier": "copilot-agent", "target": "target-4", "target_author": "codex-ide", "api_pass": 18, "api_total": 18, "ui_pass": 6, "ui_total": 6, "violation": false, "note": ""}, {"modifier": "copilot-agent", "target": "target-5", "target_author": "antigravity-ide", "api_pass": 18, "api_total": 18, "ui_pass": 6, "ui_total": 6, "violation": false, "note": "「更新」ボタン名衝突をbutton[type='submit']で正しく回避"}], "by_modifier": {"claude-code": {"sessions_completed": 5, "total_pass": 117, "total_total": 120, "pass_rate_pct": 97.5, "violations_count": 0}, "codex-cli": {"sessions_completed": 5, "total_pass": 120, "total_total": 120, "pass_rate_pct": 100.0, "violations_count": 1}, "antigravity-cli": {"sessions_completed": 5, "total_pass": 109, "total_total": 120, "pass_rate_pct": 90.8, "violations_count": 0}, "codex-ide": {"sessions_completed": 5, "total_pass": 109, "total_total": 120, "pass_rate_pct": 90.8, "violations_count": 1}, "antigravity-ide": {"sessions_completed": 5, "total_pass": 120, "total_total": 120, "pass_rate_pct": 100.0, "violations_count": 2}, "copilot-agent": {"sessions_completed": 5, "total_pass": 119, "total_total": 120, "pass_rate_pct": 99.2, "violations_count": 0}}};
+
+
+// 実験Bの共通テスト総数（グループにより異なる。確定値、Claudeによる実機検証より）
+const EXP_B_COMMON_TEST_TOTAL = {
+  'claude-code':     { group: 'status3値（グループA）',     backend_total: 11 },
+  'antigravity-cli': { group: 'status3値（グループA）',     backend_total: 11 },
+  'antigravity-ide': { group: 'status3値（グループA）',     backend_total: 11 },
+  'codex-cli':       { group: 'completed2値（グループB）',  backend_total: 14 },
+  'codex-ide':       { group: 'completed2値（グループB）',  backend_total: 16 },
+  'copilot-agent':   { group: 'completed2値（グループB）',  backend_total: 16 },
+};
+
+// 実験E（相互コードレビュー）の確定データ
+// データソース: common/evaluation/experiment-e-reviews.json
+const EXP_E_DATA = {"meta": {"description": "実験E（相互コードレビュー） 評価データ", "target_correspondence_note": "target番号と実際のエージェント名の対応は target-correspondence.md（非公開）で管理。このJSON内のキーは実際のエージェント名で記録する。"}, "vendor_map": {"claude-code": "Anthropic", "codex-cli": "OpenAI", "codex-ide": "OpenAI", "antigravity-cli": "Google", "antigravity-ide": "Google", "copilot-agent": "Microsoft"}, "targets_a": {"reviewer_scores": {"antigravity-cli": {"antigravity-ide": 9.0, "claude-code": 7.0, "codex-ide": 7.5, "copilot-agent": 6.5, "codex-cli": 5.5}, "claude-code": {"antigravity-ide": 7, "codex-ide": 9, "copilot-agent": 8, "codex-cli": 7, "antigravity-cli": 6}, "codex-cli": {"antigravity-ide": 7, "claude-code": 8, "codex-ide": 6, "copilot-agent": 8, "antigravity-cli": 5}, "codex-ide": {"antigravity-ide": 7, "claude-code": 8, "copilot-agent": 7, "codex-cli": 6, "antigravity-cli": 5}, "antigravity-ide": {"claude-code": 7, "codex-ide": 8, "copilot-agent": 7, "codex-cli": 6, "antigravity-cli": 8}, "copilot-agent": {"antigravity-ide": 7, "claude-code": 8, "codex-ide": 8, "codex-cli": 7, "antigravity-cli": 6}}, "average_by_target": {"antigravity-ide": 7.4, "claude-code": 7.6, "codex-ide": 7.7, "copilot-agent": 7.3, "codex-cli": 6.3, "antigravity-cli": 6.0}}, "targets_b": {"reviewer_scores": {"claude-code": {"antigravity-ide": 7, "codex-ide": 9, "copilot-agent": 7, "codex-cli": 7, "antigravity-cli": 7}, "antigravity-cli": {"antigravity-ide": 6, "claude-code": 8, "codex-ide": 8.5, "copilot-agent": 7.5, "codex-cli": 6.5}, "codex-cli": {"antigravity-ide": 6, "claude-code": 7, "codex-ide": 8, "copilot-agent": 7, "antigravity-cli": 5}, "codex-ide": {"antigravity-ide": 7, "claude-code": 8, "copilot-agent": 7, "codex-cli": 7, "antigravity-cli": 6}, "antigravity-ide": {"claude-code": 7, "codex-ide": 6, "copilot-agent": 7, "codex-cli": 4, "antigravity-cli": 7}, "copilot-agent": {"antigravity-ide": 6, "claude-code": 9, "codex-ide": 9, "codex-cli": 6, "antigravity-cli": 7}}, "average_by_target": {"antigravity-ide": 6.3, "claude-code": 7.8, "codex-ide": 8.0, "copilot-agent": 7.0, "codex-cli": 6.0, "antigravity-cli": 6.4}}, "homogenization_trap_analysis": {"description": "同系統ベンダー間（同じエンジン由来のエージェント間）での評価傾向の分析。6エージェント中、同系統ペアが組めるのは Google（Antigravity CLI⇔IDE）と OpenAI（Codex CLI⇔IDE）の2組のみ。Claude CodeとCopilot Agent（Claude Opus 4.8ベースだがMicrosoft製品として別ベンダー区分）には対になる同系統エージェントが存在しないため、分析対象外。", "cases": [{"vendor": "Google", "target": "antigravity-ide", "same_vendor_reviewer": "antigravity-cli", "experiment_a": {"same_vendor_score": 9.0, "other_vendor_average": 7.0, "gap": 2.0}, "experiment_b": {"same_vendor_score": 6, "other_vendor_average": 6.67, "gap": -0.67}}, {"vendor": "Google", "target": "antigravity-cli", "same_vendor_reviewer": "antigravity-ide", "experiment_a": {"same_vendor_score": 8, "other_vendor_average": 5.5, "gap": 2.5}, "experiment_b": {"same_vendor_score": 7, "other_vendor_average": 6.25, "gap": 0.75}}, {"vendor": "OpenAI", "target": "codex-ide", "same_vendor_reviewer": "codex-cli", "experiment_a": {"same_vendor_score": 6, "other_vendor_average": 8.0, "gap": -2.0}, "experiment_b": {"same_vendor_score": 8, "other_vendor_average": 7.0, "gap": 1.0}}, {"vendor": "OpenAI", "target": "codex-cli", "same_vendor_reviewer": "codex-ide", "experiment_a": {"same_vendor_score": 6, "other_vendor_average": 6.5, "gap": -0.5}, "experiment_b": {"same_vendor_score": 7, "other_vendor_average": 6.0, "gap": 1.0}}], "conclusion": "Google系（Antigravity CLI⇔IDE）では実験Aで明確な均質化トラップ（gap +2.0〜+2.5）が見られたが、実験Bではほぼ消失した（gap -0.67〜+0.75）。OpenAI系（Codex CLI⇔IDE）では逆に、実験Aでは同系統への評価がむしろ厳しく（gap -0.5〜-2.0）、実験Bでやや高くなる程度（gap +1.0）と、Google系とは異なる傾向を示した。これは『均質化トラップ』が全てのベンダー・全ての条件で一様に起きる現象ではなく、ベンダー（モデル）の特性や実験条件によって出方が異なることを示している。"}, "detection_stats": {"description": "各レビュアーが実験A・B合計でいくつの横断的発見（cross_cutting_findings）に貢献したかの集計", "by_agent": {"antigravity-cli": 2, "claude-code": 3, "codex-cli": 4, "codex-ide": 3, "antigravity-ide": 3, "copilot-agent": 2}, "note": "件数は cross_cutting_findings の detected_by に名前が挙がった回数。Codex CLIは実測検証（実際にpytest/APIを実行）を一貫して行い、最多の4件に貢献した。"}, "cross_cutting_findings": [{"id": "f01", "experiment": "A", "issue": "フィルタ適用時のサマリー集計バグ", "description": "フィルタ適用後のリストを基準にサマリー統計を計算しているため、全体件数の表示がフィルタの影響を受けてズレる", "affected_targets": ["claude-code", "codex-ide", "copilot-agent", "antigravity-cli"], "detected_by": ["antigravity-cli", "claude-code", "codex-cli", "codex-ide", "antigravity-ide"], "severity": "high"}, {"id": "f02", "experiment": "A", "issue": "テスト収集エラー（ModuleNotFoundError）", "description": "標準的な実行方法（pytest -q tests）ではモジュールパス未設定により収集失敗する", "affected_targets": ["codex-cli", "antigravity-cli"], "detected_by": ["codex-cli", "codex-ide"], "severity": "high"}, {"id": "f03", "experiment": "A", "issue": "PUT部分更新の不具合", "description": "TaskUpdateがTaskBaseを継承しているためtitleが必須になり、部分更新が機能しない", "affected_targets": ["codex-ide"], "detected_by": ["codex-cli"], "severity": "high"}, {"id": "f04", "experiment": "B", "issue": "PUT部分更新時のnull処理の設計盲点", "description": "未指定フィールドと明示的なnull送信を区別する処理が欠落。許容してDB制約違反になる場合と、無視して成功扱いにしてしまう場合の両方が存在", "affected_targets": ["antigravity-ide", "claude-code", "codex-ide", "copilot-agent", "codex-cli", "antigravity-cli"], "detected_by": ["codex-cli", "codex-ide", "antigravity-ide"], "severity": "high"}, {"id": "f05", "experiment": "B", "issue": "CORS設定の脆弱性（ワイルドカードオリジン+クレデンシャル許可）", "description": "allow_origins=[\"*\"] と allow_credentials=True の組み合わせがセキュリティリスク", "affected_targets": ["antigravity-ide"], "detected_by": ["antigravity-cli", "claude-code", "codex-cli", "copilot-agent"], "severity": "high"}, {"id": "f06", "experiment": "B", "issue": "テストが本番DBを破壊する重大バグ", "description": "テスト用DB切り替えにimportlib.import_moduleを使用しているが、モジュールキャッシュにより機能せず、本番DBを破壊する", "affected_targets": ["codex-cli"], "detected_by": ["antigravity-ide"], "severity": "critical"}, {"id": "f07", "experiment": "B", "issue": "DB接続のリソースリーク", "description": "sqlite3のwith文がcloseされず接続リークが発生（commitのみ）", "affected_targets": ["copilot-agent", "codex-cli"], "detected_by": ["claude-code", "copilot-agent"], "severity": "high"}, {"id": "f08", "experiment": "B", "issue": "AIレビューの誤検出（コメント文字化け指摘）", "description": "Codex IDEが「コメントが文字化けしている」と指摘したが、人間が実際にファイルを確認したところ誤りだった", "affected_targets": ["claude-code", "copilot-agent"], "detected_by": ["codex-ide"], "severity": "false_positive", "note": "AIレビュー結果の限界を示す重要な事例。複数レビュアーが指摘していない単独の指摘は検証が必要。"}]};
+
+
+const defaultAgentData = (agentId) => ({
+  agent_id: agentId,
+  experiments: {
+    A: { completed:false, quantitative:{dev_time_min:null,agent_reported_time_min:null,interaction_count:null,input_tokens:null,output_tokens:null,backend_lines:null,frontend_lines:null,test_lines:null,startup_errors:null,test_common_backend_pass:null,test_common_backend_total:18,test_common_frontend_pass:null,test_common_frontend_total:6}, qualitative:{readability:{human:null,ai_self:null},error_handling:{human:null,ai_self:null},ui_quality:{human:null,ai_self:null},documentation:{human:null,ai_self:null},test_coverage:{human:null,ai_self:null}}, notes:{human:'',ai_self:''}},
+    B: { completed:false, planning:{quantitative:{planning_time_min:null,feature_count:null,endpoint_count:null,plan_impl_match_pct:null}, qualitative:{feature_selection:{human:null,ai_self:null},data_model_design:{human:null,ai_self:null},ui_design_clarity:{human:null,ai_self:null},dev_order_logic:{human:null,ai_self:null},test_plan_coverage:{human:null,ai_self:null}},plan_md:''}, quantitative:{dev_time_min:null,agent_reported_time_min:null,interaction_count:null,input_tokens:null,output_tokens:null,backend_lines:null,frontend_lines:null,test_lines:null,startup_errors:null,test_common_backend_pass:null,test_common_backend_total:null,test_common_frontend_pass:null,test_common_frontend_total:null,test_self_backend_count:null,test_self_frontend_count:null,test_self_pass:null,test_self_total:null}, qualitative:{readability:{human:null,ai_self:null},error_handling:{human:null,ai_self:null},ui_quality:{human:null,ai_self:null},documentation:{human:null,ai_self:null},test_coverage:{human:null,ai_self:null}}, notes:{human:'',ai_self:''}},
+  }
+});
+
+
+
+createApp({
+  setup(){
+    const view = ref('overview');
+    const tabA = ref('定量');
+    const tabB = ref('プランニング');
+    const agents = ref(AGENTS);
+    const store = ref({});
+    const fileInput = ref(null);
+    const resetAgent = ref('');
+    const chartTokensA = ref(null);
+    const chartTokensB = ref(null);
+    let chartInstanceA = null;
+    let chartInstanceB = null;
+
+    const toast = ref({show:false,msg:''});
+    const showToast = (msg) => { toast.value={show:true,msg}; setTimeout(()=>toast.value.show=false,2500); };
+
+    // Input form state
+    const inputAgent = ref('claude-code');
+    const inputData = ref({dev_time_min:null,agent_reported_time_min:null,interaction_count:null,input_tokens:null,output_tokens:null,backend_lines:null,frontend_lines:null,startup_errors:null,test_common_backend_pass:null,test_common_backend_total:null,test_common_frontend_pass:null,test_common_frontend_total:null,test_self_backend_count:null,test_self_frontend_count:null,test_self_pass:null,test_self_total:null});
+    const inputQual = ref({readability:0,error_handling:0,ui_quality:0,documentation:0,test_coverage:0});
+    const inputNote = ref('');
+
+    const qualItems = [
+      {key:'readability',   label:'コードの可読性'},
+      {key:'error_handling',label:'エラーハンドリング'},
+      {key:'ui_quality',    label:'UIの完成度'},
+      {key:'documentation', label:'ドキュメントの質'},
+      {key:'test_coverage', label:'テストの網羅性'},
+    ];
+    const qualDesc = {0:'',1:'理解困難',2:'最低限',3:'標準的',4:'良好',5:'優秀'};
+
+    const viewNav = [
+      {id:'overview',label:'総合ランキング'},
+      {id:'expA',    label:'実験A: 詳細仕様'},
+      {id:'expB',    label:'実験B: 最小仕様'},
+      {id:'expD',    label:'実験D: 他者テスト修正'},
+      {id:'expE',    label:'実験E: 相互レビュー'},
+      {id:'gap',     label:'自己vs人間評価'},
+    ];
+    const mgmtNav = [
+      {id:'inputA',  label:'データ入力A'},
+      {id:'inputB',  label:'データ入力B'},
+      {id:'mgmt',    label:'データ管理'},
+    ];
+
+    const expProgress = ref([
+      {id:'A',label:'詳細仕様実装',  done:0,total:6, color:'var(--accent)'},
+      {id:'B',label:'最小仕様実装',  done:0,total:6, color:'var(--accent3)'},
+      {id:'C',label:'自己テスト',    done:0,total:12,color:'var(--accent4)'},
+      {id:'D',label:'他者テスト修正',done:30,total:30,color:'var(--accent2)'},
+      {id:'E',label:'相互レビュー',  done:60,total:60,color:'#a78bfa'},
+      {id:'F',label:'ダッシュボード',done:0,total:6, color:'#60a5fa'},
+    ]);
+
+    // Storage
+    const loadStore = () => {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if(raw) store.value = JSON.parse(raw);
+        else {
+          AGENTS.forEach(ag => { store.value[ag.id] = defaultAgentData(ag.id); });
+        }
+      } catch(e) {
+        AGENTS.forEach(ag => { store.value[ag.id] = defaultAgentData(ag.id); });
+      }
+    };
+    const saveStore = () => {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(store.value)); } catch(e) {}
+    };
+
+    // Helpers
+    const getAgentStore = (agentId) => store.value[agentId] || defaultAgentData(agentId);
+    const getExp = (ag, exp, section, key) => {
+      const d = getAgentStore(ag.id);
+      return d.experiments?.[exp]?.[section]?.[key] ?? null;
+    };
+    const getExpPlanning = (ag, key) => {
+      const d = getAgentStore(ag.id);
+      return d.experiments?.B?.planning?.qualitative?.[key] ?? null;
+    };
+    const getExpPlanningQ = (ag, key) => {
+      const d = getAgentStore(ag.id);
+      return d.experiments?.B?.planning?.quantitative?.[key] ?? null;
+    };
+
+    const fv = (v, unit='') => (v===null||v===undefined) ? '—' : (unit ? `${v}${unit}` : v);
+    const fq = (q) => {
+      if(!q) return '—';
+      const h = q.human??'—', a = q.ai_self??'—';
+      return `${h} / ${a}`;
+    };
+    const qualAvg = (ag, exp) => {
+      const q = getAgentStore(ag.id).experiments?.[exp]?.qualitative;
+      if(!q) return '—';
+      const vals = Object.values(q).map(x=>x?.human).filter(v=>v!==null&&v!==undefined);
+      return vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1) : '—';
+    };
+    const humanAvg = (ag, exp) => {
+      const q = getAgentStore(ag.id).experiments?.[exp]?.qualitative;
+      if(!q) return '—';
+      const vals = Object.values(q).map(x=>x?.human).filter(v=>v!==null&&v!==undefined);
+      return vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1) : '—';
+    };
+    const selfAvg = (ag, exp) => {
+      const q = getAgentStore(ag.id).experiments?.[exp]?.qualitative;
+      if(!q) return '—';
+      const vals = Object.values(q).map(x=>x?.ai_self).filter(v=>v!==null&&v!==undefined);
+      return vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1) : '—';
+    };
+    const gapVal = (ag, exp) => {
+      const h = parseFloat(humanAvg(ag,exp)), s = parseFloat(selfAvg(ag,exp));
+      if(isNaN(h)||isNaN(s)) return '—';
+      const g = (s-h).toFixed(1);
+      return g>0 ? `+${g}` : g;
+    };
+    const gapClass = (ag, exp) => {
+      const g = parseFloat(gapVal(ag,exp));
+      if(isNaN(g)) return 'gap-zero';
+      return g>0 ? 'gap-pos' : g<0 ? 'gap-neg' : 'gap-zero';
+    };
+    const gapLabel = (ag, exp) => {
+      const g = parseFloat(gapVal(ag,exp));
+      if(isNaN(g)) return 'データなし';
+      if(g>0.5) return '過大評価傾向';
+      if(g<-0.5) return '過小評価（謙虚）';
+      return 'メタ認知良好';
+    };
+    const sumPass = (ag, exp) => {
+      const be = getExp(ag,exp,'quantitative','test_common_backend_pass');
+      const fe = getExp(ag,exp,'quantitative','test_common_frontend_pass');
+      if(be===null&&fe===null) return '—';
+      return (be||0)+(fe||0);
+    };
+    const passRate = (ag, exp) => {
+      const be = getExp(ag,exp,'quantitative','test_common_backend_pass');
+      const fe = getExp(ag,exp,'quantitative','test_common_frontend_pass');
+      const beTotal = getExp(ag,exp,'quantitative','test_common_backend_total');
+      const feTotal = getExp(ag,exp,'quantitative','test_common_frontend_total');
+      if(be===null&&fe===null) return 0;
+      const total = (beTotal||0) + (feTotal||0);
+      if(total===0) return 0;
+      return Math.round(((be||0)+(fe||0))/total*100);
+    };
+    const passColor = (r) => r>=90?'var(--accent3)':r>=70?'var(--accent4)':'var(--accent2)';
+    const tokenSum = (ag, exp) => {
+      const i = getExp(ag,exp,'quantitative','input_tokens');
+      const o = getExp(ag,exp,'quantitative','output_tokens');
+      if(i===null&&o===null) return '—';
+      return ((i||0)+(o||0)).toLocaleString();
+    };
+    const selfTestRate = (ag) => {
+      const p = getExp(ag,'B','quantitative','test_self_pass');
+      const t = getExp(ag,'B','quantitative','test_self_total');
+      if(p===null||t===null) return '—';
+      return Math.round(p/t*100)+'%';
+    };
+
+    // ===== 実験E: 相互コードレビュー =====
+    // 実験D: 他者テスト修正
+    const expDData = ref(EXP_D_DATA);
+
+    const expDSession = (modifierId, targetId) => {
+      return expDData.value.sessions.find(s => s.modifier === modifierId && s.target_author === targetId) || null;
+    };
+    const expDCellStyle = (modifierId, targetId) => {
+      if (modifierId === targetId) return {};
+      const s = expDSession(modifierId, targetId);
+      if (!s) return {};
+      const total = s.api_total + s.ui_total;
+      const pass = s.api_pass + s.ui_pass;
+      const rate = pass / total;
+      const alpha = 0.08 + rate * 0.30;
+      const color = s.violation ? '255,107,107' : '67,217,162';
+      return { background: `rgba(${color},${alpha.toFixed(2)})`, textAlign: 'center', fontWeight: '600' };
+    };
+    const expDRanking = computed(() => {
+      return AGENTS.map(ag => {
+        const stat = expDData.value.by_modifier[ag.id] || { pass_rate_pct: 0, total_pass: 0, total_total: 0, violations_count: 0 };
+        return {
+          id: ag.id,
+          passRate: stat.pass_rate_pct,
+          totalPass: stat.total_pass,
+          totalTotal: stat.total_total,
+          violations: stat.violations_count,
+        };
+      }).sort((a, b) => b.passRate - a.passRate);
+    });
+    const expDViolations = computed(() => {
+      return expDData.value.sessions.filter(s => s.violation);
+    });
+
+    const expEData = ref(EXP_E_DATA);
+    const expEExp = ref('A'); // 'A' or 'B' for matrix view
+
+    const agentLabel = (agentId) => {
+      const ag = AGENTS.find(a => a.id === agentId);
+      return ag ? ag.label : agentId;
+    };
+
+    const expEAvgA = (ag) => {
+      const v = expEData.value.targets_a.average_by_target[ag.id];
+      return v !== undefined ? v.toFixed(1) : '—';
+    };
+    const expEAvgB = (ag) => {
+      const v = expEData.value.targets_b.average_by_target[ag.id];
+      return v !== undefined ? v.toFixed(1) : '—';
+    };
+    const expEAvgDiff = (ag) => {
+      const a = expEData.value.targets_a.average_by_target[ag.id];
+      const b = expEData.value.targets_b.average_by_target[ag.id];
+      if (a === undefined || b === undefined) return '—';
+      const diff = b - a;
+      return (diff > 0 ? '+' : '') + diff.toFixed(1);
+    };
+    const expEAvgDiffColor = (ag) => {
+      const a = expEData.value.targets_a.average_by_target[ag.id];
+      const b = expEData.value.targets_b.average_by_target[ag.id];
+      if (a === undefined || b === undefined) return 'var(--text-dim)';
+      const diff = b - a;
+      if (diff > 0.3) return 'var(--accent3)';
+      if (diff < -0.3) return 'var(--accent2)';
+      return 'var(--text-dim)';
+    };
+
+    // パネル1: マトリクス用ヘルパー
+    const matrixScore = (reviewerId, targetId) => {
+      const dataset = expEExp.value === 'A' ? expEData.value.targets_a : expEData.value.targets_b;
+      const scores = dataset.reviewer_scores[reviewerId];
+      if (!scores || scores[targetId] === undefined) return '—';
+      return scores[targetId];
+    };
+    const matrixCellStyle = (reviewerId, targetId) => {
+      if (reviewerId === targetId) return {};
+      const score = matrixScore(reviewerId, targetId);
+      if (score === '—') return {};
+      // 5(薄)〜9(濃) の範囲を緑の濃淡にマッピング
+      const t = Math.max(0, Math.min(1, (score - 4) / 5));
+      const alpha = 0.08 + t * 0.30;
+      return { background: `rgba(67,217,162,${alpha.toFixed(2)})`, textAlign: 'center', fontWeight: '600' };
+    };
+
+    const homogenizationRows = computed(() => {
+      const rows = [];
+      expEData.value.homogenization_trap_analysis.cases.forEach((c) => {
+        rows.push({
+          key: c.target + '-A',
+          vendor: c.vendor,
+          target: c.target,
+          reviewer: c.same_vendor_reviewer,
+          expLabel: '実験A',
+          sameScore: c.experiment_a.same_vendor_score,
+          otherAvg: c.experiment_a.other_vendor_average,
+          gap: c.experiment_a.gap,
+        });
+        rows.push({
+          key: c.target + '-B',
+          vendor: c.vendor,
+          target: c.target,
+          reviewer: c.same_vendor_reviewer,
+          expLabel: '実験B',
+          sameScore: c.experiment_b.same_vendor_score,
+          otherAvg: c.experiment_b.other_vendor_average,
+          gap: c.experiment_b.gap,
+        });
+      });
+      return rows;
+    });
+
+    // パネル4: 検出力ランキング
+    const detectionRanking = computed(() => {
+      const stats = expEData.value.detection_stats.by_agent;
+      return Object.entries(stats)
+        .map(([id, count]) => ({ id, count }))
+        .sort((a, b) => b.count - a.count);
+    });
+
+    const severityLabel = (sev) => {
+      const map = { critical: '重大', high: '高', medium: '中', low: '低', false_positive: '誤検出' };
+      return map[sev] || sev;
+    };
+    const severityBadgeClass = (sev) => {
+      if (sev === 'critical') return 'b-ng';
+      if (sev === 'high') return 'b-ng';
+      if (sev === 'false_positive') return 'b-cli';
+      return 'b-ide';
+    };
+
+    // 実験E用チャート描画
+    let expEAvgChartInstance = null;
+    let expEGapChartInstance = null;
+    let expEDetectChartInstance = null;
+
+    const renderExpECharts = () => {
+      if (typeof Chart === 'undefined') return;
+      const labels = agents.value.map(a => a.shortLabel || a.label);
+
+      // パネル2: 平均評価 グループバー
+      const avgCanvas = document.getElementById('expEAvgChart');
+      if (avgCanvas) {
+        if (expEAvgChartInstance) expEAvgChartInstance.destroy();
+        expEAvgChartInstance = new Chart(avgCanvas, {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [
+              {
+                label: '実験A平均',
+                data: agents.value.map(a => expEData.value.targets_a.average_by_target[a.id] ?? null),
+                backgroundColor: 'rgba(124,111,255,.6)',
+              },
+              {
+                label: '実験B平均',
+                data: agents.value.map(a => expEData.value.targets_b.average_by_target[a.id] ?? null),
+                backgroundColor: 'rgba(67,217,162,.6)',
+              },
+            ],
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true, max: 10 } },
+            plugins: { legend: { labels: { color: '#cbd5e1' } } },
+          },
+        });
+      }
+
+      // パネル3: 均質化トラップ gap チャート
+      const gapCanvas = document.getElementById('expEGapChart');
+      if (gapCanvas) {
+        if (expEGapChartInstance) expEGapChartInstance.destroy();
+        const rows = homogenizationRows.value;
+        expEGapChartInstance = new Chart(gapCanvas, {
+          type: 'bar',
+          data: {
+            labels: rows.map(r => `${agentLabel(r.target)}(${r.expLabel})`),
+            datasets: [{
+              label: '同系統評価 − 異系統平均 (gap)',
+              data: rows.map(r => r.gap),
+              backgroundColor: rows.map(r => r.gap > 0 ? 'rgba(255,107,107,.6)' : 'rgba(67,217,162,.6)'),
+            }],
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true, maintainAspectRatio: false,
+            scales: { x: { suggestedMin: -3, suggestedMax: 3 } },
+            plugins: { legend: { display: false } },
+          },
+        });
+      }
+
+      // パネル4: 検出力ランキング
+      const detectCanvas = document.getElementById('expEDetectChart');
+      if (detectCanvas) {
+        if (expEDetectChartInstance) expEDetectChartInstance.destroy();
+        const ranking = detectionRanking.value;
+        expEDetectChartInstance = new Chart(detectCanvas, {
+          type: 'bar',
+          data: {
+            labels: ranking.map(r => agentLabel(r.id)),
+            datasets: [{
+              label: '横断的発見への貢献数',
+              data: ranking.map(r => r.count),
+              backgroundColor: 'rgba(96,165,250,.6)',
+            }],
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true, maintainAspectRatio: false,
+            scales: { x: { beginAtZero: true, max: expEData.value.cross_cutting_findings.length } },
+            plugins: { legend: { display: false } },
+          },
+        });
+      }
+    };
+
+    const rankedAgents = computed(() => {
+      return [...agents.value].map(ag => ({
+        ...ag,
+        totalScore: Math.round(passRate(ag,'A')*0.4 + parseFloat(qualAvg(ag,'A'))||0*8)
+      })).sort((a,b)=>b.totalScore-a.totalScore);
+    });
+
+    // Input save
+    const saveInput = (exp) => {
+      const agId = inputAgent.value;
+      if(!store.value[agId]) store.value[agId] = defaultAgentData(agId);
+      const expData = store.value[agId].experiments[exp];
+
+      // quantitative（null/空文字は「クリアする」という意図として明示的にnullを保存する）
+      Object.keys(inputData.value).forEach(k => {
+        const v = inputData.value[k];
+        expData.quantitative[k] = (v===null || v==='') ? null : v;
+      });
+      // qualitative
+      qualItems.forEach(item => {
+        if(inputQual.value[item.key]>0) {
+          expData.qualitative[item.key].human = inputQual.value[item.key];
+        }
+      });
+      // notes
+      if(inputNote.value) expData.notes.human = inputNote.value;
+      expData.completed = true;
+
+      saveStore();
+      updateProgress();
+      showToast(`✅ ${AGENTS.find(a=>a.id===agId)?.label} 実験${exp} を保存しました`);
+    };
+
+    const clearInput = () => {
+      inputData.value = {dev_time_min:null,agent_reported_time_min:null,interaction_count:null,input_tokens:null,output_tokens:null,backend_lines:null,frontend_lines:null,startup_errors:null,test_common_backend_pass:null,test_common_backend_total:null,test_common_frontend_pass:null,test_common_frontend_total:null,test_self_backend_count:null,test_self_frontend_count:null,test_self_pass:null,test_self_total:null};
+      inputQual.value = {readability:0,error_handling:0,ui_quality:0,documentation:0,test_coverage:0};
+      inputNote.value = '';
+    };
+
+    // 実験Bのグループ表示用ラベル
+    const expBGroupLabel = computed(() => {
+      const info = EXP_B_COMMON_TEST_TOTAL[inputAgent.value];
+      return info ? info.group : '不明';
+    });
+
+    // 現在のview（inputA/inputB）から実験コードを取得
+    const currentInputExp = () => view.value === 'inputB' ? 'B' : 'A';
+
+    // Populate form when agent or view(inputA/inputB) changes
+    watch([inputAgent, view], () => {
+      if (view.value !== 'inputA' && view.value !== 'inputB') return;
+      const d = getAgentStore(inputAgent.value);
+      const exp = currentInputExp();
+      const q = d.experiments?.[exp]?.quantitative || {};
+      const ql = d.experiments?.[exp]?.qualitative || {};
+      inputData.value = {
+        dev_time_min: q.dev_time_min ?? null,
+        agent_reported_time_min: q.agent_reported_time_min ?? null,
+        interaction_count: q.interaction_count ?? null,
+        input_tokens: q.input_tokens ?? null,
+        output_tokens: q.output_tokens ?? null,
+        backend_lines: q.backend_lines ?? null,
+        frontend_lines: q.frontend_lines ?? null,
+        startup_errors: q.startup_errors ?? null,
+        test_common_backend_pass: q.test_common_backend_pass ?? null,
+        test_common_backend_total: exp === 'A' ? 18 : (q.test_common_backend_total ?? (EXP_B_COMMON_TEST_TOTAL[inputAgent.value]?.backend_total ?? null)),
+        test_common_frontend_pass: q.test_common_frontend_pass ?? null,
+        test_common_frontend_total: exp === 'A' ? 6 : (q.test_common_frontend_total ?? null),
+        test_self_backend_count: q.test_self_backend_count ?? null,
+        test_self_frontend_count: q.test_self_frontend_count ?? null,
+        test_self_pass: q.test_self_pass ?? null,
+        test_self_total: q.test_self_total ?? null,
+      };
+      inputQual.value = {
+        readability:    ql.readability?.human ?? 0,
+        error_handling: ql.error_handling?.human ?? 0,
+        ui_quality:     ql.ui_quality?.human ?? 0,
+        documentation:  ql.documentation?.human ?? 0,
+        test_coverage:  ql.test_coverage?.human ?? 0,
+      };
+      inputNote.value = d.experiments?.[exp]?.notes?.human ?? '';
+    });
+
+    // Export
+    const exportJson = (agentId) => {
+      const data = store.value[agentId] || defaultAgentData(agentId);
+      const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href=url; a.download=`${agentId}.json`; a.click();
+      URL.revokeObjectURL(url);
+      showToast(`📥 ${agentId}.json をダウンロードしました`);
+    };
+
+    // Import
+    const triggerImport = () => fileInput.value?.click();
+    const handleFileImport = (e) => {
+      const file = e.target.files[0];
+      if(!file) return;
+      processImportFile(file);
+      e.target.value='';
+    };
+    const handleDrop = (e) => {
+      const file = e.dataTransfer.files[0];
+      if(file) processImportFile(file);
+    };
+    const processImportFile = (file) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const data = JSON.parse(ev.target.result);
+          const agentId = data.agent_id || data.meta?.agent_id;
+          if(!agentId) { showToast('❌ agent_idが見つかりません'); return; }
+          if(!store.value[agentId]) store.value[agentId] = defaultAgentData(agentId);
+          // Merge ai_self only
+          const exps = data.experiments || {};
+          Object.keys(exps).forEach(exp => {
+            if(!store.value[agentId].experiments[exp]) return;
+            const srcQual = exps[exp]?.qualitative;
+            const srcNotes = exps[exp]?.notes;
+            if(srcQual) {
+              Object.keys(srcQual).forEach(k => {
+                if(store.value[agentId].experiments[exp].qualitative[k] && srcQual[k]?.ai_self!==undefined) {
+                  store.value[agentId].experiments[exp].qualitative[k].ai_self = srcQual[k].ai_self;
+                }
+              });
+            }
+            if(srcNotes?.ai_self!==undefined) {
+              store.value[agentId].experiments[exp].notes.ai_self = srcNotes.ai_self;
+            }
+          });
+          saveStore();
+          showToast(`✅ ${agentId}.json をインポートしました（ai_selfのみ）`);
+        } catch(e) { showToast('❌ JSONの解析に失敗しました'); }
+      };
+      reader.readAsText(file);
+    };
+
+    // Reset
+    const resetData = () => {
+      if(!resetAgent.value) return;
+      if(!confirm(`${resetAgent.value} のデータをリセットしますか？`)) return;
+      store.value[resetAgent.value] = defaultAgentData(resetAgent.value);
+      saveStore();
+      showToast(`🗑 ${resetAgent.value} のデータをリセットしました`);
+      resetAgent.value='';
+    };
+
+    const updateProgress = () => {
+      expProgress.value.forEach(exp => {
+        if(['A','B'].includes(exp.id)) {
+          exp.done = AGENTS.filter(ag => store.value[ag.id]?.experiments?.[exp.id]?.completed).length;
+        }
+      });
+    };
+
+    onMounted(() => {
+      loadStore();
+      updateProgress();
+    });
+
+    const renderTokenChart = (exp) => {
+      nextTick(() => {
+        const canvasRef = exp === 'A' ? chartTokensA.value : chartTokensB.value;
+        if (!canvasRef) return;
+
+        const labels = agents.value.map(ag => ag.shortLabel);
+        const inputData = agents.value.map(ag => getExp(ag, exp, 'quantitative', 'input_tokens') || 0);
+        const outputData = agents.value.map(ag => getExp(ag, exp, 'quantitative', 'output_tokens') || 0);
+
+        const existing = exp === 'A' ? chartInstanceA : chartInstanceB;
+        if (existing) existing.destroy();
+
+        const chart = new Chart(canvasRef, {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [
+              { label: '入力トークン', data: inputData, backgroundColor: 'rgba(124,111,255,0.8)', borderRadius: 4 },
+              { label: '出力トークン', data: outputData, backgroundColor: 'rgba(67,217,162,0.8)', borderRadius: 4 },
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: '#7a7f96', font: { size: 11 } } } },
+            scales: {
+              x: { stacked: true, ticks: { color: '#7a7f96' }, grid: { color: '#2a2d38' } },
+              y: { stacked: true, ticks: { color: '#7a7f96' }, grid: { color: '#2a2d38' } }
+            }
+          }
+        });
+
+        if (exp === 'A') chartInstanceA = chart;
+        else chartInstanceB = chart;
+      });
+    };
+
+    watch([view, tabB], () => {
+      if (view.value === 'expB' && tabB.value === '実装') renderTokenChart('B');
+    });
+    watch(view, () => {
+      if (view.value === 'expE') {
+        nextTick(() => renderExpECharts());
+      }
+    });
+    watch(expEExp, () => {
+      // マトリクスはリアクティブに再計算されるが、グラフ自体は実験A/Bで変わらないため再描画不要
+    });
+
+    return {
+      view, viewNav, mgmtNav, agents, rankedAgents, expProgress,
+      tabA, tabB,
+      inputAgent, inputData, inputQual, inputNote, expBGroupLabel,
+      qualItems, qualDesc, resetAgent, fileInput, toast,
+      chartTokensA, chartTokensB,
+      getExp, getExpPlanning, getExpPlanningQ,
+      fv, fq, qualAvg, humanAvg, selfAvg,
+      gapVal, gapClass, gapLabel,
+      sumPass, passRate, passColor, selfTestRate, tokenSum,
+      saveInput, clearInput, exportJson,
+      triggerImport, handleFileImport, handleDrop, resetData,
+      expEData, expEExp, agentLabel, expEAvgA, expEAvgB, expEAvgDiff, expEAvgDiffColor,
+      homogenizationRows, severityLabel, severityBadgeClass,
+      matrixScore, matrixCellStyle, detectionRanking,
+      expDData, expDSession, expDCellStyle, expDRanking, expDViolations,
+    };
+  }
+}).mount('#app');
+</script>
+</body>
+</html>

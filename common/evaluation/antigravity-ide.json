@@ -1,0 +1,128 @@
+{
+  "agent_id": "antigravity-ide",
+  "experiments": {
+    "A": {
+      "completed": true,
+      "quantitative": {
+        "dev_time_min": 20,
+        "agent_reported_time_min": null,
+        "interaction_count": 13,
+        "input_tokens": null,
+        "output_tokens": null,
+        "backend_lines": 154,
+        "frontend_lines": 1224,
+        "test_lines": null,
+        "startup_errors": 0,
+        "test_common_backend_pass": 17,
+        "test_common_backend_total": 18,
+        "test_common_frontend_pass": 6,
+        "test_common_frontend_total": 6
+      },
+      "qualitative": {
+        "readability": {
+          "human": 4,
+          "ai_self": 4
+        },
+        "error_handling": {
+          "human": 4,
+          "ai_self": 5
+        },
+        "ui_quality": {
+          "human": 5,
+          "ai_self": 4
+        },
+        "documentation": {
+          "human": 4,
+          "ai_self": 4
+        },
+        "test_coverage": {
+          "human": 4,
+          "ai_self": 4
+        }
+      },
+      "notes": {
+        "human": "UI/UXの完成度は全エージェント中最高水準（モーダル形式の\n編集・追加フォーム、サマリーダッシュボード、トースト通知、\nパルスアニメーション）。同系統のAntigravity CLIと比較すると、\nバックエンドのロジック品質は明らかに上回っており、PUT部分更新・\n優先度ソートのいずれも正しく機能していた（同系統でも\nセッションによる品質差があることを示す事例）。\n\n特筆事項として、Antigravity IDEは自律的にブラウザを操作して\nCRUD全体の動作確認を実施していた。日本語IME入力がブラウザ\n自動操作エージェントの制限に引っかかる問題に直面し、英語タイトル\nの使用や日付フィールドへの精緻なキーイベント送信で対応するという、\n高度な自己検証プロセスを実施していた。\n\n共通テスト（24本）は17/18+6/6で高い合格率。不合格1本は\nDELETE /tasks/{id}がstatus_code指定なしで200+JSON返却する\n仕様解釈の差によるもの（Antigravity CLIと同じパターン、修正不可）。\n\n既知の問題として「期限切れフィルタがバックエンドAPI非対応で\nフロントエンド側で絞り込んでいる」という技術的負債を自己申告\nしていた点は、正直な自己評価として評価できる。",
+        "ai_self": "可読性4/5: バックエンドはDIやモデル分離が優れているが、フロントエンドが単一index.htmlにCSS・JSを含み長大化している。エラー処理5/5: Pydanticの検証エラーをフロントで詳細にパースし各入力項目の直下にエラーを表示する実装が極めて堅牢。UI完成度4/5: ガラスモーフィズムとカスタムトースト通知、期限切れ警告の点滅など意匠は優れるが、リスト型でカンバン型ではない点が惜しい。ドキュメント4/5: READMEにディレクトリ構成・起動手順・自動テスト実行方法が過不足なくまとめられ実用的。テスト網羅性4/5: SQLiteインメモリDBを介したCRUD・バリデーション・フィルタ・ソートのテストを網羅。"
+      }
+    },
+    "B": {
+      "completed": true,
+      "planning": {
+        "quantitative": {
+          "planning_time_min": null,
+          "feature_count": null,
+          "endpoint_count": null,
+          "plan_impl_match_pct": null
+        },
+        "qualitative": {
+          "feature_selection": {
+            "human": null,
+            "ai_self": null
+          },
+          "data_model_design": {
+            "human": null,
+            "ai_self": null
+          },
+          "ui_design_clarity": {
+            "human": null,
+            "ai_self": null
+          },
+          "dev_order_logic": {
+            "human": null,
+            "ai_self": null
+          },
+          "test_plan_coverage": {
+            "human": null,
+            "ai_self": null
+          }
+        },
+        "plan_md": ""
+      },
+      "quantitative": {
+        "dev_time_min": 34,
+        "agent_reported_time_min": null,
+        "interaction_count": 14,
+        "input_tokens": null,
+        "output_tokens": null,
+        "backend_lines": 385,
+        "frontend_lines": 1666,
+        "test_lines": null,
+        "startup_errors": 1,
+        "test_common_backend_pass": 10,
+        "test_common_backend_total": 11,
+        "test_common_frontend_pass": null,
+        "test_common_frontend_total": null,
+        "test_self_backend_count": 6,
+        "test_self_frontend_count": 0,
+        "test_self_pass": 6,
+        "test_self_total": 6
+      },
+      "qualitative": {
+        "readability": {
+          "human": 4,
+          "ai_self": 5
+        },
+        "error_handling": {
+          "human": 3,
+          "ai_self": 3
+        },
+        "ui_quality": {
+          "human": 5,
+          "ai_self": 5
+        },
+        "documentation": {
+          "human": 5,
+          "ai_self": 5
+        },
+        "test_coverage": {
+          "human": 4,
+          "ai_self": 5
+        }
+      },
+      "notes": {
+        "human": "共通テスト（グループA・status3値）: 10/11 passed, 1 xfailed。\npriority/statusにEnum/Literal制約がなく、不正な値（例:\n'invalid_value'）でも201で作成されてしまうバリデーション漏れを\n新規発見（実験Eのレビューでは未指摘）。\n\nUIはカンバンボード+進捗ゲージ+タグ管理+絵文字を使った空状態表示で、\n全エージェント中最も機能豊富で洗練されたデザイン。plan.mdでは\n「タグ機能」を必須機能、「ドラッグ＆ドロップ」を優先度低としており、\nAntigravity CLIとは逆の判断をしつつ、結果的に進捗ゲージ等の\n付加機能で当初計画を上回る完成度を実現した。\n\nUI/UXの完成度の高さとは裏腹に、バックエンドの入力検証が手薄\nだった点は、同系統のAntigravity CLIと比較する好材料になる。\nREADME.mdはディレクトリ構成・各ファイルの役割まで記載され、\n全エージェント中最も充実している。",
+        "ai_self": "可読性5/5: バックエンドはcrud.pyを分離し、フロントはHTML/CSS/JSが別ファイルに綺麗に分かれ見通しが非常に良い。エラー処理3/5: API側は適切だがフロントエンドのエラー通知や保存失敗時の挙動がブラウザのalert()に留まりUX的に改善の余地あり。UI完成度5/5: ドラッグ＆ドロップによるカンバン移動、完了率のプログレスゲージ、タグ作成と削除の同期など非常にインタラクティブで美麗と自己評価。ドキュメント5/5: READMEに機能一覧・全API仕様が明記され、詳細な設計計画書plan.mdも用意され完璧と評価。テスト網羅性5/5: conftest.pyによるフィクスチャの整理と、タグ管理やアナリティクス機能の境界値を含めた高密度なテストが書かれていると自己評価。"
+      }
+    }
+  }
+}

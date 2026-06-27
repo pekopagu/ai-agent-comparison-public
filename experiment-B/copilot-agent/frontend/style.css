@@ -1,0 +1,284 @@
+/* タスク管理アプリ スタイル */
+:root {
+  --accent: #4f46e5;
+  --accent-hover: #4338ca;
+  --bg: #f3f4f6;
+  --card: #ffffff;
+  --text: #1f2937;
+  --text-muted: #6b7280;
+  --border: #e5e7eb;
+  --danger: #dc2626;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  padding: 1rem;
+}
+
+#app {
+  max-width: 680px;
+  margin: 0 auto;
+}
+
+/* ヘッダー */
+.header {
+  text-align: center;
+  margin: 1.5rem 0;
+}
+.header__title {
+  font-size: 1.8rem;
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+}
+.stats {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.stats__item {
+  background: var(--card);
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  box-shadow: var(--shadow);
+  color: var(--text-muted);
+}
+.stats__item--active {
+  color: var(--accent);
+}
+.stats__item--done {
+  color: #16a34a;
+}
+
+/* カード共通 */
+.card {
+  background: var(--card);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+/* フォーム */
+.form-card__heading {
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+}
+.field {
+  margin-bottom: 0.85rem;
+  flex: 1;
+}
+.field__label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  color: var(--text-muted);
+}
+.required {
+  color: var(--danger);
+}
+.field__input {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-family: inherit;
+}
+.field__input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+.field__textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+.field-row {
+  display: flex;
+  gap: 0.85rem;
+}
+.form-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+/* ボタン */
+.btn {
+  padding: 0.55rem 1.2rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn--primary {
+  background: var(--accent);
+  color: #fff;
+}
+.btn--primary:hover {
+  background: var(--accent-hover);
+}
+.btn--ghost {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+.btn--ghost:hover {
+  background: var(--bg);
+}
+
+.error-message {
+  color: var(--danger);
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+}
+
+/* ツールバー */
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+.filter-group {
+  display: flex;
+  gap: 0.35rem;
+}
+.filter-btn {
+  padding: 0.4rem 0.85rem;
+  border: 1px solid var(--border);
+  background: var(--card);
+  border-radius: 999px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+.filter-btn--active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.search-input {
+  flex: 1;
+  min-width: 140px;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+.search-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* タスクカード */
+.task-card {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 1rem;
+}
+.task-card--done {
+  opacity: 0.6;
+}
+.task-card--done .task-card__title {
+  text-decoration: line-through;
+}
+.task-card__check input {
+  width: 1.2rem;
+  height: 1.2rem;
+  cursor: pointer;
+  margin-top: 0.15rem;
+}
+.task-card__body {
+  flex: 1;
+  min-width: 0;
+}
+.task-card__top {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.task-card__title {
+  font-weight: 600;
+  word-break: break-word;
+}
+.task-card__desc {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.task-card__meta {
+  margin-top: 0.35rem;
+}
+.task-card__due {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.task-card__actions {
+  display: flex;
+  gap: 0.25rem;
+}
+.icon-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.25rem;
+  border-radius: 6px;
+}
+.icon-btn:hover {
+  background: var(--bg);
+}
+
+/* 優先度バッジ */
+.badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+}
+.badge--high {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+.badge--medium {
+  background: #fef3c7;
+  color: #b45309;
+}
+.badge--low {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.empty {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 2rem 0;
+}
+
+.footer {
+  text-align: center;
+  color: var(--text-muted);
+  margin: 1.5rem 0;
+}

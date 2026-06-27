@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskFlow - モダンタスク管理アプリ</title>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome (Icons) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app" v-cloak>
+        <!-- ヘッダーエリア -->
+        <header class="app-header">
+            <div class="header-container">
+                <div class="logo">
+                    <i class="fa-solid fa-square-check logo-icon"></i>
+                    <h1>TaskFlow</h1>
+                </div>
+                
+                <!-- 検索・フィルターツールバー -->
+                <div class="toolbar">
+                    <div class="search-box">
+                        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                        <input 
+                            type="text" 
+                            v-model="filters.q" 
+                            @input="debouncedFetchTasks" 
+                            placeholder="タスクを検索..."
+                            id="search-input"
+                        >
+                        <button v-if="filters.q" @click="clearSearch" class="clear-search-btn">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+
+                    <div class="filter-select-wrapper">
+                        <i class="fa-solid fa-filter filter-icon"></i>
+                        <select v-model="filters.priority" @change="fetchTasks" id="priority-filter">
+                            <option value="">すべての優先度</option>
+                            <option value="high">優先度: 高</option>
+                            <option value="medium">優先度: 中</option>
+                            <option value="low">優先度: 低</option>
+                        </select>
+                    </div>
+
+                    <button @click="openCreateModal" class="btn btn-primary" id="new-task-btn">
+                        <i class="fa-solid fa-plus"></i> 新規タスク
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- メインコンテンツ (カンバンボード) -->
+        <main class="board-container">
+            <div class="board">
+                <!-- Todo カラム -->
+                <div 
+                    class="board-column" 
+                    @dragover.prevent 
+                    @dragenter.prevent="dragEnterColumn('todo')"
+                    @dragleave="dragLeaveColumn('todo')"
+                    @drop="dropTask('todo')"
+                    :class="{ 'column-dragover': dragOverColumn === 'todo' }"
+                    id="column-todo"
+                >
+                    <div class="column-header">
+                        <div class="column-title">
+                            <span class="status-indicator status-todo"></span>
+                            <h2>未着手</h2>
+                            <span class="task-count">{{ getTaskCount('todo') }}</span>
+                        </div>
+                    </div>
+                    <div class="column-body">
+                        <div 
+                            v-for="task in getTasksByStatus('todo')" 
+                            :key="task.id"
+                            class="task-card"
+                            :class="{ 'task-overdue': isOverdue(task.due_date) && task.status !== 'done' }"
+                            draggable="true"
+                            @dragstart="dragStartTask(task)"
+                            @dragend="dragEndTask"
+                            @click="openEditModal(task)"
+                            :id="'task-' + task.id"
+                        >
+                            <div class="task-card-header">
+                                <span :class="['priority-badge', 'priority-' + task.priority]">
+                                    {{ getPriorityLabel(task.priority) }}
+                                </span>
+                                <span v-if="isOverdue(task.due_date) && task.status !== 'done'" class="overdue-badge">
+                                    <i class="fa-solid fa-triangle-exclamation"></i> 期限切れ
+                                </span>
+                            </div>
+                            <h3 class="task-card-title">{{ task.title }}</h3>
+                            <p class="task-card-desc">{{ task.description || '詳細なし' }}</p>
+                            <div class="task-card-footer">
+                                <div class="task-due-date" :class="{ 'text-danger': isOverdue(task.due_date) }">
+                                    <i class="fa-regular fa-calendar"></i>
+                                    <span>{{ task.due_date || '期限なし' }}</span>
+                                </div>
+                                <div class="task-actions" @click.stop>
+                                    <button @click="deleteTask(task.id)" class="action-btn delete-btn" title="削除">
+                                        <i class="fa-regular fa-trash-can"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-if="getTasksByStatus('todo').length === 0" class="empty-column-placeholder">
+                            タスクがありません
+                        </div>
+                    </div>
+                </div>
+
+                <!-- In Progress カラム -->
+                <div 
+                    class="board-column" 
+                    @dragover.prevent 
+                    @dragenter.prevent="dragEnterColumn('in_progress')"
+                    @dragleave="dragLeaveColumn('in_progress')"
+                    @drop="dropTask('in_progress')"
+                    :class="{ 'column-dragover': dragOverColumn === 'in_progress' }"
+                    id="column-in-progress"
+                >
+                    <div class="column-header">
+                        <div class="column-title">
+                            <span class="status-indicator status-progress"></span>
+                            <h2>進行中</h2>
+                            <span class="task-count">{{ getTaskCount('in_progress') }}</span>
+                        </div>
+                    </div>
+                    <div class="column-body">
+                        <div 
+                            v-for="task in getTasksByStatus('in_progress')" 
+                            :key="task.id"
+                            class="task-card"
+                            :class="{ 'task-overdue': isOverdue(task.due_date) && task.status !== 'done' }"
+                            draggable="true"
+                            @dragstart="dragStartTask(task)"
+                            @dragend="dragEndTask"
+                            @click="openEditModal(task)"
+                            :id="'task-' + task.id"
+                        >
+                            <div class="task-card-header">
+                                <span :class="['priority-badge', 'priority-' + task.priority]">
+                                    {{ getPriorityLabel(task.priority) }}
+                                </span>
+                                <span v-if="isOverdue(task.due_date) && task.status !== 'done'" class="overdue-badge">
+                                    <i class="fa-solid fa-triangle-exclamation"></i> 期限切れ
+                                </span>
+                            </div>
+                            <h3 class="task-card-title">{{ task.title }}</h3>
+                            <p class="task-card-desc">{{ task.description || '詳細なし' }}</p>
+                            <div class="task-card-footer">
+                                <div class="task-due-date" :class="{ 'text-danger': isOverdue(task.due_date) }">
+                                    <i class="fa-regular fa-calendar"></i>
+                                    <span>{{ task.due_date || '期限なし' }}</span>
+                                </div>
+                                <div class="task-actions" @click.stop>
+                                    <button @click="deleteTask(task.id)" class="action-btn delete-btn" title="削除">
+                                        <i class="fa-regular fa-trash-can"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-if="getTasksByStatus('in_progress').length === 0" class="empty-column-placeholder">
+                            タスクがありません
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Done カラム -->
+                <div 
+                    class="board-column" 
+                    @dragover.prevent 
+                    @dragenter.prevent="dragEnterColumn('done')"
+                    @dragleave="dragLeaveColumn('done')"
+                    @drop="dropTask('done')"
+                    :class="{ 'column-dragover': dragOverColumn === 'done' }"
+                    id="column-done"
+                >
+                    <div class="column-header">
+                        <div class="column-title">
+                            <span class="status-indicator status-done"></span>
+                            <h2>完了</h2>
+                            <span class="task-count">{{ getTaskCount('done') }}</span>
+                        </div>
+                    </div>
+                    <div class="column-body">
+                        <div 
+                            v-for="task in getTasksByStatus('done')" 
+                            :key="task.id"
+                            class="task-card task-card-done"
+                            draggable="true"
+                            @dragstart="dragStartTask(task)"
+                            @dragend="dragEndTask"
+                            @click="openEditModal(task)"
+                            :id="'task-' + task.id"
+                        >
+                            <div class="task-card-header">
+                                <span :class="['priority-badge', 'priority-' + task.priority]">
+                                    {{ getPriorityLabel(task.priority) }}
+                                </span>
+                            </div>
+                            <h3 class="task-card-title">{{ task.title }}</h3>
+                            <p class="task-card-desc">{{ task.description || '詳細なし' }}</p>
+                            <div class="task-card-footer">
+                                <div class="task-due-date">
+                                    <i class="fa-regular fa-calendar"></i>
+                                    <span>{{ task.due_date || '期限なし' }}</span>
+                                </div>
+                                <div class="task-actions" @click.stop>
+                                    <button @click="deleteTask(task.id)" class="action-btn delete-btn" title="削除">
+                                        <i class="fa-regular fa-trash-can"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-if="getTasksByStatus('done').length === 0" class="empty-column-placeholder">
+                            タスクがありません
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- モーダル（作成・編集兼用） -->
+        <div v-if="modal.show" class="modal-overlay" @click.self="closeModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>{{ modal.isEdit ? 'タスクを編集' : '新規タスク作成' }}</h2>
+                    <button @click="closeModal" class="close-modal-btn">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <form @submit.prevent="submitForm" class="task-form">
+                    <div class="form-group">
+                        <label for="task-title">タイトル <span class="required">*</span></label>
+                        <input 
+                            type="text" 
+                            id="task-title" 
+                            v-model="form.title" 
+                            required 
+                            maxlength="100"
+                            placeholder="タスクの名前を入力してください"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="task-desc">詳細</label>
+                        <textarea 
+                            id="task-desc" 
+                            v-model="form.description" 
+                            rows="4" 
+                            placeholder="タスクの具体的な内容やメモを入力..."
+                        ></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group col">
+                            <label for="task-due">期限日</label>
+                            <input 
+                                type="date" 
+                                id="task-due" 
+                                v-model="form.due_date"
+                            >
+                        </div>
+
+                        <div class="form-group col">
+                            <label for="task-priority">優先度</label>
+                            <select id="task-priority" v-model="form.priority">
+                                <option value="low">低</option>
+                                <option value="medium">中</option>
+                                <option value="high">高</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div v-if="modal.isEdit" class="form-group">
+                        <label for="task-status">ステータス</label>
+                        <select id="task-status" v-model="form.status">
+                            <option value="todo">未着手</option>
+                            <option value="in_progress">進行中</option>
+                            <option value="done">完了</option>
+                        </select>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" @click="closeModal" class="btn btn-secondary">キャンセル</button>
+                        <button type="submit" class="btn btn-primary">
+                            {{ modal.isEdit ? '更新する' : '作成する' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- トースト通知 -->
+        <div v-if="toast.show" :class="['toast-notification', 'toast-' + toast.type]">
+            <i :class="['fa-solid', toast.type === 'success' ? 'fa-circle-check' : 'fa-circle-xmark']"></i>
+            <span>{{ toast.message }}</span>
+        </div>
+    </div>
+
+    <!-- Vue 3 Global CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Custom JS -->
+    <script src="app.js"></script>
+</body>
+</html>

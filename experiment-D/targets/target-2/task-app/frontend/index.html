@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>タスク管理アプリ</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <style>
+    :root {
+      --color-todo: #6c757d;
+      --color-doing: #0d6efd;
+      --color-done: #198754;
+      --color-low: #20c997;
+      --color-medium: #fd7e14;
+      --color-high: #dc3545;
+      --bg: #f4f6f9;
+      --card: #ffffff;
+      --border: #e0e4e8;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Hiragino Kaku Gothic ProN", "Meiryo", system-ui, sans-serif;
+      background: var(--bg);
+      color: #222;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 24px 16px 64px;
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      margin: 0 0 4px;
+    }
+
+    .subtitle {
+      color: #777;
+      font-size: 0.9rem;
+      margin-bottom: 20px;
+    }
+
+    /* サマリー */
+    .summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .summary-card {
+      flex: 1;
+      min-width: 120px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      text-align: center;
+    }
+
+    .summary-card .num {
+      font-size: 1.6rem;
+      font-weight: bold;
+    }
+
+    .summary-card .label {
+      font-size: 0.8rem;
+      color: #777;
+    }
+
+    /* フォーム */
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+
+    .panel h2 {
+      font-size: 1.1rem;
+      margin: 0 0 16px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .form-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .form-row.full { grid-column: 1 / -1; }
+
+    label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #555;
+    }
+
+    input, textarea, select {
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-family: inherit;
+      background: #fff;
+    }
+
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: var(--color-doing);
+    }
+
+    textarea { resize: vertical; min-height: 60px; }
+
+    .btn {
+      border: none;
+      border-radius: 8px;
+      padding: 9px 18px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-primary { background: var(--color-doing); color: #fff; }
+    .btn-secondary { background: #e9ecef; color: #333; }
+    .btn-danger { background: var(--color-high); color: #fff; }
+    .btn-sm { padding: 4px 10px; font-size: 0.8rem; }
+
+    .form-actions {
+      grid-column: 1 / -1;
+      display: flex;
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .error-msg {
+      color: var(--color-high);
+      font-size: 0.82rem;
+    }
+
+    .error-box {
+      background: #fde8e8;
+      border: 1px solid #f5c2c7;
+      color: #842029;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+      font-size: 0.88rem;
+    }
+
+    /* フィルタ・ソートバー */
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: flex-end;
+    }
+
+    .toolbar .form-row { min-width: 120px; }
+
+    /* タスク一覧 */
+    .task-list { display: flex; flex-direction: column; gap: 12px; }
+
+    .task-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-left: 5px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .task-card.prio-low { border-left-color: var(--color-low); }
+    .task-card.prio-medium { border-left-color: var(--color-medium); }
+    .task-card.prio-high { border-left-color: var(--color-high); }
+
+    .task-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .task-title {
+      font-weight: 700;
+      font-size: 1.05rem;
+      margin: 0;
+    }
+
+    .task-desc {
+      color: #555;
+      font-size: 0.9rem;
+      margin: 6px 0;
+      white-space: pre-wrap;
+    }
+
+    .badges { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; align-items: center; }
+
+    .badge {
+      font-size: 0.74rem;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 999px;
+      color: #fff;
+    }
+    .badge.status-todo { background: var(--color-todo); }
+    .badge.status-doing { background: var(--color-doing); }
+    .badge.status-done { background: var(--color-done); }
+    .badge.prio-low { background: var(--color-low); }
+    .badge.prio-medium { background: var(--color-medium); }
+    .badge.prio-high { background: var(--color-high); }
+
+    .due {
+      font-size: 0.8rem;
+      color: #666;
+    }
+    .due.overdue {
+      color: var(--color-high);
+      font-weight: 700;
+    }
+    .overdue-tag {
+      background: var(--color-high);
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+
+    .task-actions { display: flex; gap: 8px; margin-top: 8px; }
+
+    .empty {
+      text-align: center;
+      color: #999;
+      padding: 40px;
+    }
+
+    .loading { text-align: center; color: #999; padding: 20px; }
+
+    @media (max-width: 560px) {
+      .form-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app" class="container">
+    <h1>📋 タスク管理アプリ</h1>
+    <p class="subtitle">FastAPI + Vue 3 によるタスク管理</p>
+
+    <!-- サマリー -->
+    <div class="summary">
+      <div class="summary-card">
+        <div class="num">{{ tasks.length }}</div>
+        <div class="label">全タスク</div>
+      </div>
+      <div class="summary-card">
+        <div class="num" style="color: var(--color-todo)">{{ countByStatus.todo }}</div>
+        <div class="label">未着手 (todo)</div>
+      </div>
+      <div class="summary-card">
+        <div class="num" style="color: var(--color-doing)">{{ countByStatus.doing }}</div>
+        <div class="label">作業中 (doing)</div>
+      </div>
+      <div class="summary-card">
+        <div class="num" style="color: var(--color-done)">{{ countByStatus.done }}</div>
+        <div class="label">完了 (done)</div>
+      </div>
+      <div class="summary-card">
+        <div class="num" style="color: var(--color-high)">{{ overdueCount }}</div>
+        <div class="label">期限切れ</div>
+      </div>
+    </div>
+
+    <!-- 追加・編集フォーム -->
+    <div class="panel">
+      <h2>{{ editingId ? 'タスクを編集' : 'タスクを追加' }}</h2>
+      <div v-if="formError" class="error-box">{{ formError }}</div>
+      <form class="form-grid" @submit.prevent="submitForm">
+        <div class="form-row full">
+          <label>タイトル <span style="color:var(--color-high)">*</span></label>
+          <input v-model="form.title" type="text" placeholder="例: 資料を作成する" maxlength="255">
+          <span v-if="fieldErrors.title" class="error-msg">{{ fieldErrors.title }}</span>
+        </div>
+        <div class="form-row full">
+          <label>説明</label>
+          <textarea v-model="form.description" placeholder="詳細メモ（任意）"></textarea>
+        </div>
+        <div class="form-row">
+          <label>ステータス</label>
+          <select v-model="form.status">
+            <option value="todo">未着手 (todo)</option>
+            <option value="doing">作業中 (doing)</option>
+            <option value="done">完了 (done)</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>優先度</label>
+          <select v-model="form.priority">
+            <option value="low">低 (low)</option>
+            <option value="medium">中 (medium)</option>
+            <option value="high">高 (high)</option>
+          </select>
+        </div>
+        <div class="form-row full">
+          <label>期限</label>
+          <input v-model="form.due_date" type="date">
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">
+            {{ editingId ? '更新する' : '追加する' }}
+          </button>
+          <button v-if="editingId" type="button" class="btn btn-secondary" @click="cancelEdit">
+            キャンセル
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- フィルタ・ソート -->
+    <div class="panel">
+      <h2>フィルタ・並び替え</h2>
+      <div class="toolbar">
+        <div class="form-row">
+          <label>ステータス</label>
+          <select v-model="filters.status" @change="loadTasks">
+            <option value="">すべて</option>
+            <option value="todo">未着手</option>
+            <option value="doing">作業中</option>
+            <option value="done">完了</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>優先度</label>
+          <select v-model="filters.priority" @change="loadTasks">
+            <option value="">すべて</option>
+            <option value="low">低</option>
+            <option value="medium">中</option>
+            <option value="high">高</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>並び替え</label>
+          <select v-model="filters.sort" @change="loadTasks">
+            <option value="created_at">作成日時</option>
+            <option value="due_date">期限</option>
+            <option value="priority">優先度</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>順序</label>
+          <select v-model="filters.order" @change="loadTasks">
+            <option value="asc">昇順</option>
+            <option value="desc">降順</option>
+          </select>
+        </div>
+        <button class="btn btn-secondary" @click="resetFilters">リセット</button>
+      </div>
+    </div>
+
+    <!-- タスク一覧 -->
+    <div v-if="loading" class="loading">読み込み中...</div>
+    <div v-else-if="loadError" class="error-box">{{ loadError }}</div>
+    <div v-else-if="tasks.length === 0" class="empty">タスクがありません。上のフォームから追加してください。</div>
+    <div v-else class="task-list">
+      <div
+        v-for="task in tasks"
+        :key="task.id"
+        class="task-card"
+        :class="'prio-' + task.priority"
+      >
+        <div class="task-head">
+          <h3 class="task-title">{{ task.title }}</h3>
+          <span class="overdue-tag" v-if="isOverdue(task)">⚠ 期限切れ</span>
+        </div>
+        <p class="task-desc" v-if="task.description">{{ task.description }}</p>
+        <div class="badges">
+          <span class="badge" :class="'status-' + task.status">{{ statusLabel(task.status) }}</span>
+          <span class="badge" :class="'prio-' + task.priority">優先度: {{ priorityLabel(task.priority) }}</span>
+          <span v-if="task.due_date" class="due" :class="{ overdue: isOverdue(task) }">
+            🗓 期限: {{ task.due_date }}
+          </span>
+        </div>
+        <div class="task-actions">
+          <button class="btn btn-secondary btn-sm" @click="startEdit(task)">編集</button>
+          <button class="btn btn-danger btn-sm" @click="deleteTask(task)">削除</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const { createApp } = Vue;
+    const API_BASE = "http://localhost:8000";
+
+    createApp({
+      data() {
+        return {
+          tasks: [],
+          loading: false,
+          loadError: "",
+          formError: "",
+          fieldErrors: {},
+          editingId: null,
+          form: this.emptyForm(),
+          filters: { status: "", priority: "", sort: "created_at", order: "asc" },
+        };
+      },
+      computed: {
+        countByStatus() {
+          const c = { todo: 0, doing: 0, done: 0 };
+          for (const t of this.tasks) {
+            if (c[t.status] !== undefined) c[t.status]++;
+          }
+          return c;
+        },
+        overdueCount() {
+          return this.tasks.filter((t) => this.isOverdue(t)).length;
+        },
+      },
+      methods: {
+        emptyForm() {
+          return {
+            title: "",
+            description: "",
+            status: "todo",
+            priority: "medium",
+            due_date: "",
+          };
+        },
+        statusLabel(s) {
+          return { todo: "未着手", doing: "作業中", done: "完了" }[s] || s;
+        },
+        priorityLabel(p) {
+          return { low: "低", medium: "中", high: "高" }[p] || p;
+        },
+        isOverdue(task) {
+          // 完了済みは期限切れ警告の対象外とする
+          if (!task.due_date || task.status === "done") return false;
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const due = new Date(task.due_date + "T00:00:00");
+          return due < today;
+        },
+        async loadTasks() {
+          this.loading = true;
+          this.loadError = "";
+          try {
+            const params = new URLSearchParams();
+            if (this.filters.status) params.append("status", this.filters.status);
+            if (this.filters.priority) params.append("priority", this.filters.priority);
+            params.append("sort", this.filters.sort);
+            params.append("order", this.filters.order);
+            const res = await fetch(`${API_BASE}/tasks?${params.toString()}`);
+            if (!res.ok) throw new Error(`サーバーエラー (${res.status})`);
+            this.tasks = await res.json();
+          } catch (e) {
+            this.loadError = "タスクの取得に失敗しました: " + e.message;
+          } finally {
+            this.loading = false;
+          }
+        },
+        validateForm() {
+          this.fieldErrors = {};
+          if (!this.form.title || !this.form.title.trim()) {
+            this.fieldErrors.title = "タイトルは必須です。";
+            return false;
+          }
+          return true;
+        },
+        buildPayload() {
+          return {
+            title: this.form.title.trim(),
+            description: this.form.description ? this.form.description : null,
+            status: this.form.status,
+            priority: this.form.priority,
+            due_date: this.form.due_date ? this.form.due_date : null,
+          };
+        },
+        async submitForm() {
+          this.formError = "";
+          if (!this.validateForm()) return;
+          const payload = this.buildPayload();
+          try {
+            let res;
+            if (this.editingId) {
+              res = await fetch(`${API_BASE}/tasks/${this.editingId}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+              });
+            } else {
+              res = await fetch(`${API_BASE}/tasks`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+              });
+            }
+            if (!res.ok) {
+              const err = await res.json().catch(() => ({}));
+              throw new Error(this.formatApiError(err));
+            }
+            this.cancelEdit();
+            await this.loadTasks();
+          } catch (e) {
+            this.formError = "保存に失敗しました: " + e.message;
+          }
+        },
+        formatApiError(err) {
+          // FastAPI のバリデーションエラー形式に対応
+          if (Array.isArray(err.detail)) {
+            return err.detail.map((d) => d.msg).join(" / ");
+          }
+          if (typeof err.detail === "string") return err.detail;
+          return "不明なエラー";
+        },
+        startEdit(task) {
+          this.editingId = task.id;
+          this.form = {
+            title: task.title,
+            description: task.description || "",
+            status: task.status,
+            priority: task.priority,
+            due_date: task.due_date || "",
+          };
+          this.formError = "";
+          this.fieldErrors = {};
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        },
+        cancelEdit() {
+          this.editingId = null;
+          this.form = this.emptyForm();
+          this.formError = "";
+          this.fieldErrors = {};
+        },
+        async deleteTask(task) {
+          if (!confirm(`「${task.title}」を削除しますか？`)) return;
+          try {
+            const res = await fetch(`${API_BASE}/tasks/${task.id}`, { method: "DELETE" });
+            if (!res.ok && res.status !== 204) throw new Error(`サーバーエラー (${res.status})`);
+            // 編集中のタスクを削除した場合はフォームをリセット
+            if (this.editingId === task.id) this.cancelEdit();
+            await this.loadTasks();
+          } catch (e) {
+            this.loadError = "削除に失敗しました: " + e.message;
+          }
+        },
+        resetFilters() {
+          this.filters = { status: "", priority: "", sort: "created_at", order: "asc" };
+          this.loadTasks();
+        },
+      },
+      mounted() {
+        this.loadTasks();
+      },
+    }).mount("#app");
+  </script>
+</body>
+</html>
